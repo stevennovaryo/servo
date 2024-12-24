@@ -236,7 +236,7 @@ bitflags! {
 /// <https://dom.spec.whatwg.org/#concept-node-insert>
 /// <https://dom.spec.whatwg.org/#concept-node-remove>
 #[derive(Clone, Copy, MallocSizeOf)]
-enum SuppressObserver {
+pub(crate) enum SuppressObserver {
     Suppressed,
     Unsuppressed,
 }
@@ -2205,7 +2205,7 @@ impl Node {
     }
 
     /// <https://dom.spec.whatwg.org/#concept-node-remove>
-    fn remove(node: &Node, parent: &Node, suppress_observers: SuppressObserver) {
+    pub(crate) fn remove(node: &Node, parent: &Node, suppress_observers: SuppressObserver) {
         parent.owner_doc().add_script_and_layout_blocker();
         assert!(node
             .GetParentNode()

@@ -4,7 +4,7 @@
 
 //! Element nodes.
 
-use std::borrow::Cow;
+use std::borrow::{Borrow, Cow};
 use std::cell::Cell;
 use std::default::Default;
 use std::ops::Deref;
@@ -64,6 +64,7 @@ use xml5ever::serialize::TraversalScope::{
 
 use super::customelementregistry::is_valid_custom_element_name;
 use super::htmltablecolelement::{HTMLTableColElement, HTMLTableColElementLayoutHelpers};
+use super::node::SuppressObserver;
 use crate::dom::activation::Activatable;
 use crate::dom::attr::{Attr, AttrHelpersForLayout};
 use crate::dom::bindings::cell::{ref_filter_map, DomRefCell, Ref, RefMut};
@@ -529,12 +530,39 @@ impl Element {
             }
         }
 
-        // TODO: Update the following steps to align with the newer spec.
-        // Step 3.
-        if self.is_shadow_host() {
-            return Err(Error::InvalidState);
+        // TODO: implement step 3.
+
+        // Step 4.
+        // If element is a shadow host:
+        // 1. Let currentShadowRoot be element’s shadow root.
+        if let Some(current_shadow_root) = self.shadow_root() {
+            // 2. If any of the following are true:
+            //    - currentShadowRoot’s declarative is false; or
+            //    - currentShadowRoot’s mode is not mode,
+            // TODO: Implement shadow root's declarative
+            if current_shadow_root.Mode() != mode {
+                return Err(Error::NotSupported);
+            }
+
+            // 3. Otherwise:
+            //    1. Remove all of currentShadowRoot’s children, in tree order.
+            for children in current_shadow_root.upcast::<Node>().children() {
+                Node::remove(
+                    &children,
+                    current_shadow_root.upcast::<Node>(),
+                    SuppressObserver::Unsuppressed,
+                );
+            }
+
+            //    2. Set currentShadowRoot’s declarative to false.
+            // TODO: Implement shadow root's declarative
+
+            //    3. Return
+            return Ok(current_shadow_root);
         }
 
+        // TODO: Update the following steps to align with the newer spec.
+        // From <https://dom.spec.whatwg.org/commit-snapshots/32efc48fef28c34ed914b60cfb3c29807e617365/#dom-element-attachshadow>
         // Steps 4, 5 and 6.
         let shadow_root = ShadowRoot::new(self, &self.node.owner_doc(), mode, clonable);
         self.ensure_rare_data().shadow_root = Some(Dom::from_ref(&*shadow_root));
