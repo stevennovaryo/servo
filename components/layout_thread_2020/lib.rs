@@ -30,7 +30,8 @@ use layout::context::LayoutContext;
 use layout::display_list::{DisplayList, WebRenderImageInfo};
 use layout::query::{
     get_the_text_steps, process_content_box_request, process_content_boxes_request,
-    process_node_geometry_request, process_node_scroll_area_request, process_offset_parent_query,
+    process_is_node_descendant_of_other_node_request, process_node_geometry_request,
+    process_node_scroll_area_request, process_offset_parent_query,
     process_resolved_font_style_query, process_resolved_style_request, process_text_index_request,
 };
 use layout::traversal::RecalcStyle;
@@ -103,7 +104,7 @@ static STYLE_THREAD_POOL: Mutex<&style::global_style_data::STYLE_THREAD_POOL> =
 /// Information needed by layout.
 pub struct LayoutThread {
     /// The ID of the pipeline that we belong to.
-    id: PipelineId,
+    id: PipelineId, // it's here
 
     /// The webview that contains the pipeline we belong to.
     webview_id: WebViewId,
@@ -405,6 +406,23 @@ impl Layout for LayoutThread {
             Au::from_f32_px(point_in_node.y),
         );
         process_text_index_request(node, point_in_node)
+    }
+
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+    )]
+    fn query_is_node_descendant_of_other_node(
+        &self,
+        node: OpaqueNode,
+        other_node: OpaqueNode,
+    ) -> bool {
+        process_is_node_descendant_of_other_node_request(
+            node,
+            other_node,
+            self.scroll_offsets.borrow(),
+            self.fragment_tree.borrow().clone(),
+        )
     }
 
     fn exit_now(&mut self) {}
@@ -814,6 +832,7 @@ impl LayoutThread {
         })
     }
 
+    // MYNOTES TODO: what is this
     fn update_scroll_node_state(&self, state: &ScrollState) {
         self.scroll_offsets
             .borrow_mut()

@@ -2271,6 +2271,7 @@ impl Window {
         self.scroll_offsets
             .borrow_mut()
             .insert(node.to_opaque(), Vector2D::new(x_ as f32, y_ as f32));
+        // MYNOTES convert node to scroll_id
         let scroll_id = ExternalScrollId(
             combine_id_with_fragment_type(node.to_opaque().id(), FragmentType::FragmentBody),
             self.pipeline_id().into(),
@@ -2355,6 +2356,17 @@ impl Window {
         self.layout
             .borrow()
             .query_text_indext(node.to_opaque(), point_in_node)
+    }
+
+    // query content box without considering any reflow
+    pub(crate) fn is_node_descendant_of_other_node_query_no_reflow(
+        &self,
+        node: &Node,
+        other_node: &Node,
+    ) -> bool {
+        self.layout
+            .borrow()
+            .query_is_node_descendant_of_other_node(node.to_opaque(), other_node.to_opaque())
     }
 
     #[allow(unsafe_code)]

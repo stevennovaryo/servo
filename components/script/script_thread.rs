@@ -1878,6 +1878,7 @@ impl ScriptThread {
             ScriptThreadEventCategory::SetScrollState,
             Some(pipeline_id),
             || {
+                // MYNOTES: creation of window.scrollOffsets
                 window.layout_mut().set_scroll_states(&scroll_states);
 
                 let mut scroll_offsets = HashMap::new();
