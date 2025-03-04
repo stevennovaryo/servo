@@ -858,6 +858,10 @@ impl Node {
         self.owner_window().client_rect_query(self, can_gc)
     }
 
+    pub(crate) fn is_descendant_of_other_node_no_reflow(&self, other_node: &Node) -> bool {
+        self.owner_doc().window().is_node_descendant_of_other_node_query_no_reflow(self, other_node)
+    }
+
     /// <https://drafts.csswg.org/cssom-view/#dom-element-scrollwidth>
     /// <https://drafts.csswg.org/cssom-view/#dom-element-scrollheight>
     pub(crate) fn scroll_area(&self, can_gc: CanGc) -> Rect<i32> {

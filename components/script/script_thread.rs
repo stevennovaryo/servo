@@ -1266,7 +1266,6 @@ impl ScriptThread {
             // > 19. For each doc of docs, run the update intersection observations steps for doc,
             // > passing in the relative high resolution time given now and
             // > doc's relevant global object as the timestamp. [INTERSECTIONOBSERVER]
-            // TODO(stevennovaryo): The time attribute should be relative to the time origin of the global object
             document.update_intersection_observer_steps(CrossProcessInstant::now(), can_gc);
 
             // TODO: Mark paint timing from https://w3c.github.io/paint-timing.
@@ -1885,6 +1884,7 @@ impl ScriptThread {
             ScriptThreadEventCategory::SetScrollState,
             Some(pipeline_id),
             || {
+                // MYNOTES: creation of window.scrollOffsets
                 window.layout_mut().set_scroll_states(&scroll_states);
 
                 let mut scroll_offsets = HashMap::new();

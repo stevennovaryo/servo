@@ -2,19 +2,28 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+use std::collections::HashMap;
+use std::hash::RandomState;
+
 use app_units::Au;
+use base::id::PipelineId;
 use base::print_tree::PrintTree;
 use euclid::default::{Point2D, Rect, Size2D};
+use euclid::Vector2D;
 use fxhash::FxHashSet;
+use script_layout_interface::{combine_id_with_fragment_type, FragmentType};
 use style::animation::AnimationSetKey;
+use style::computed_values::position::T as ComputedPosition;
 use style::dom::OpaqueNode;
-use webrender_api::units;
+use webrender_api::units::LayoutPixel;
+use webrender_api::{units, ExternalScrollId};
 use webrender_traits::display_list::AxesScrollSensitivity;
 
 use super::{ContainingBlockManager, Fragment, Tag};
 use crate::display_list::StackingContext;
 use crate::flow::CanvasBackground;
 use crate::geom::{PhysicalPoint, PhysicalRect};
+use crate::style_ext::ComputedValuesExt;
 
 pub struct FragmentTree {
     /// Fragments at the top-level of the tree.
@@ -92,6 +101,22 @@ impl FragmentTree {
         });
     }
 
+    pub(crate) fn find_v2<T>(
+        &self,
+        pipeline_id: PipelineId,
+        scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
+        mut process_func: impl FnMut(&Fragment, usize, &PhysicalRect<Au>) -> Option<T>,
+    ) -> Option<T> {
+        let info = ContainingBlockManager {
+            for_non_absolute_descendants: &self.initial_containing_block,
+            for_absolute_descendants: None,
+            for_absolute_and_fixed_descendants: &self.initial_containing_block,
+        };
+        self.root_fragments
+            .iter()
+            .find_map(|child| child.find_v2(pipeline_id, scroll_offsets, Vector2D::zero(), &info, 0, &mut process_func))
+    }
+
     /// Get the vector of rectangles that surrounds the fragments of the node with the given address.
     /// This function answers the `getClientRects()` query and the union of the rectangles answers
     /// the `getBoundingClientRect()` query.
@@ -101,6 +126,38 @@ impl FragmentTree {
         let mut content_boxes = Vec::new();
         let tag_to_find = Tag::new(requested_node);
         self.find(|fragment, _, containing_block| {
+            if fragment.tag() != Some(tag_to_find) {
+                return None::<()>;
+            }
+
+            let fragment_relative_rect = match fragment {
+                Fragment::Box(fragment) | Fragment::Float(fragment) => {
+                    fragment.borrow().border_rect()
+                },
+                Fragment::Positioning(fragment) => fragment.borrow().rect,
+                Fragment::Text(fragment) => fragment.borrow().rect,
+                Fragment::AbsoluteOrFixedPositioned(_) |
+                Fragment::Image(_) |
+                Fragment::IFrame(_) => return None,
+            };
+
+            let rect = fragment_relative_rect.translate(containing_block.origin.to_vector());
+
+            content_boxes.push(rect.to_untyped());
+            None::<()>
+        });
+        content_boxes
+    }
+
+    /// Get the vector of rectangles that surrounds the fragments of the node with the given address.
+    /// This function answers the `getClientRects()` query and the union of the rectangles answers
+    /// the `getBoundingClientRect()` query.
+    ///
+    /// TODO: This function is supposed to handle scroll offsets, but that isn't happening at all.
+    pub fn get_content_boxes_for_node(&self, requested_node: OpaqueNode, pipeline_id: PipelineId, scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>) -> Vec<Rect<Au>> {
+        let mut content_boxes = Vec::new();
+        let tag_to_find = Tag::new(requested_node);
+        self.find_v2(pipeline_id, scroll_offsets,|fragment, _, containing_block| {
             if fragment.tag() != Some(tag_to_find) {
                 return None::<()>;
             }
@@ -187,5 +244,167 @@ impl FragmentTree {
             }
         });
         scroll_area.unwrap_or_else(PhysicalRect::<Au>::zero)
+    }
+
+
+    pub fn is_node_descendant_of_other_node(
+        &self,
+        node: OpaqueNode,
+        other_node: OpaqueNode,
+    ) -> bool {
+        let other_node_tag = Tag::new(other_node);
+        let node_tag = Tag::new(node);
+
+        // TODO(stevennovaryo): find a place to place this or whether it is already implemented
+        #[derive(Clone, Copy, Default)]
+        struct ContainingBlockPathInfo {
+            tag: Option<Tag>,
+            establishes_containing_block_for_all_descendants: bool,
+            establishes_containing_block_for_absolute_descendants: bool,
+            position: Option<ComputedPosition>,
+        }
+
+        #[derive(Default)]
+        struct ContainingBlockBacktrackPath {
+            inner: Vec<ContainingBlockPathInfo>,
+            level: usize,
+        }
+
+        impl ContainingBlockBacktrackPath {
+            fn push(&mut self, info: ContainingBlockPathInfo) {
+                if self.level == self.inner.len() {
+                    self.inner.push(info);
+                } else {
+                    assert!(self.level < self.inner.len());
+                    self.inner[self.level] = info;
+                }
+                self.level += 1;
+            }
+
+            fn pop(&mut self) {
+                self.level -= 1;
+            }
+
+            fn back(&mut self) -> Option<&ContainingBlockPathInfo> {
+                if self.level > 0 {
+                    Some(&self.inner[self.level - 1])
+                } else {
+                    None
+                }
+            }
+
+            fn len(&mut self) -> usize {
+                self.level
+            }
+        }
+
+        impl Iterator for ContainingBlockBacktrackPath {
+            type Item = ContainingBlockPathInfo;
+
+            fn next(&mut self) -> Option<ContainingBlockPathInfo> {
+                if self.level == 0 {
+                    return None;
+                }
+
+                let current_position = self.back().unwrap().position;
+                self.pop();
+
+                while self.level > 0 {
+                    let containing_block_info = self.back().unwrap();
+                    match current_position {
+                        Some(ComputedPosition::Fixed) => {
+                            if containing_block_info
+                                .establishes_containing_block_for_all_descendants
+                            {
+                                return Some(*containing_block_info);
+                            }
+                        },
+                        Some(ComputedPosition::Absolute) => {
+                            if containing_block_info
+                                .establishes_containing_block_for_absolute_descendants
+                            {
+                                return Some(*containing_block_info);
+                            }
+                        },
+                        // TODO(stevennovaryo): check for containing block without style, e.g. position == None
+                        _ => return Some(*containing_block_info),
+                    }
+                    self.pop();
+                }
+                None
+            }
+        }
+
+        let mut backtrack_paths: ContainingBlockBacktrackPath = Default::default();
+
+        self.find(|fragment, level, _| {
+            // Technically we do not know when does the DFS exit this node.
+            // But we can find the current backtrack path from the previous iteration.
+            while backtrack_paths.len() > level {
+                backtrack_paths.pop();
+            }
+
+            let mut is_main_frame = false;
+            let containing_block_info = match fragment {
+                Fragment::Box(fragment) | Fragment::Float(fragment) => {
+                    let fragment = fragment.borrow();
+                    is_main_frame = true;
+                    ContainingBlockPathInfo {
+                        tag: fragment.base.tag,
+                        establishes_containing_block_for_all_descendants: fragment
+                            .style
+                            .establishes_containing_block_for_all_descendants(fragment.base.flags),
+                        establishes_containing_block_for_absolute_descendants: fragment
+                            .style
+                            .establishes_containing_block_for_absolute_descendants(
+                                fragment.base.flags,
+                            ),
+                        position: Some(fragment.style.clone_position()),
+                    }
+                },
+                // TODO(stevennovaryo): check whether including this will result in false positive
+                Fragment::Positioning(fragment) => {
+                    let fragment = fragment.borrow();
+                    if let Some(style) = &fragment.style {
+                        ContainingBlockPathInfo {
+                            tag: fragment.base.tag,
+                            establishes_containing_block_for_all_descendants: style
+                                .establishes_containing_block_for_all_descendants(
+                                    fragment.base.flags,
+                                ),
+                            establishes_containing_block_for_absolute_descendants: style
+                                .establishes_containing_block_for_absolute_descendants(
+                                    fragment.base.flags,
+                                ),
+                            position: Some(style.clone_position()),
+                        }
+                    } else {
+                        // TODO(stevennovaryo): make this as an function
+                        ContainingBlockPathInfo {
+                            tag: fragment.base.tag,
+                            establishes_containing_block_for_all_descendants: false,
+                            establishes_containing_block_for_absolute_descendants: false,
+                            position: None,
+                        }
+                    }
+                },
+                // TODO(stevennovaryo): I guess we could ignore replaced contents
+                _ => Default::default(),
+            };
+
+            backtrack_paths.push(containing_block_info);
+
+
+            if is_main_frame && fragment.tag() == Some(node_tag) {
+                // dbg!(fragment.tag());
+                // dbg!(backtrack_paths.level, level);
+                // backtrack_paths.print();
+                Some(true)
+            } else {
+                None
+            }
+        });
+
+        backtrack_paths.any(|info| info.tag == Some(other_node_tag))
     }
 }

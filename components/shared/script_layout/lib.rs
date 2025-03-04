@@ -276,6 +276,11 @@ pub trait Layout {
     ) -> Option<ServoArc<Font>>;
     fn query_scrolling_area(&self, node: Option<OpaqueNode>) -> Rect<i32>;
     fn query_text_indext(&self, node: OpaqueNode, point: Point2D<f32>) -> Option<usize>;
+    fn query_is_node_descendant_of_other_node(
+        &self,
+        node: OpaqueNode,
+        other_node: OpaqueNode,
+    ) -> bool;
 }
 
 /// This trait is part of `script_layout_interface` because it depends on both `script_traits`
@@ -495,6 +500,7 @@ pub fn combine_id_with_fragment_type(id: usize, fragment_type: FragmentType) -> 
     }
 }
 
+// MYNOTES this is important
 pub fn node_id_from_scroll_id(id: usize) -> Option<usize> {
     if (id as u64 & !SPECIAL_SCROLL_ROOT_ID_MASK) != 0 {
         return Some(id & !3);

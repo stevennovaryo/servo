@@ -3,6 +3,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 //! Utilities for querying the layout, as needed by layout.
+use std::cell::Ref;
+use std::collections::HashMap;
+use std::hash::RandomState;
 use std::sync::Arc;
 
 use app_units::Au;
@@ -13,7 +16,7 @@ use log::warn;
 use script_layout_interface::wrapper_traits::{
     LayoutNode, ThreadSafeLayoutElement, ThreadSafeLayoutNode,
 };
-use script_layout_interface::{LayoutElementType, LayoutNodeType, OffsetParentResponse};
+use script_layout_interface::{node_id_from_scroll_id, LayoutElementType, LayoutNodeType, OffsetParentResponse};
 use servo_arc::Arc as ServoArc;
 use servo_url::ServoUrl;
 use style::computed_values::display::T as Display;
@@ -37,6 +40,8 @@ use style::values::generics::font::LineHeight;
 use style::values::specified::box_::DisplayInside;
 use style::values::specified::GenericGridTemplateComponent;
 use style_traits::{ParsingMode, ToCss};
+use webrender_api::units::LayoutPixel;
+use webrender_api::ExternalScrollId;
 
 use crate::flow::inline::construct::{TextTransformation, WhitespaceCollapse};
 use crate::fragment_tree::{
@@ -1149,4 +1154,27 @@ where
         resolve_for_declarations::<E>(context, Some(&*parent_style), declarations, shared_lock);
 
     Some(computed_values.clone_font())
+}
+
+
+pub fn process_is_node_descendant_of_other_node_request(
+    node: OpaqueNode,
+    other_node: OpaqueNode,
+    scroll_offsets: Ref<HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>>,
+    fragment_tree: Option<Arc<FragmentTree>>,
+) -> bool {
+    if let Some(fragment_tree) = fragment_tree {
+        // dbg!(node, other_node);
+        // for (key, val) in scroll_offsets.iter() {
+            // let node_id = node_id_from_scroll_id(key.0 as usize);
+        //     println!("key: {} {}::{} val: ({}, {})", node_id.unwrap_or_default(), key.pipeline_id().0, key.pipeline_id().1, val.x, val.y);
+        // }
+        // dbg!(scroll_offsets);
+        let is_descendant = fragment_tree.is_node_descendant_of_other_node(node, other_node);
+        // dbg!(is_descendant);
+        // fragment_tree.print();
+        is_descendant
+    } else {
+        false
+    }
 }

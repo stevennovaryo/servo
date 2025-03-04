@@ -360,6 +360,7 @@ impl IntersectionObserver {
             )
             .as_traced(),
         );
+
         // > Step 3
         // Queue an intersection observer task for document.
         document.queue_an_intersection_observer_task();
@@ -487,14 +488,6 @@ impl IntersectionObserver {
             return IntersectionObservationOutput::default_skipped();
         }
 
-        // Step 6
-        // > If the intersection root is an Element, and target is not a descendant of
-        // > the intersection root in the containing block chain, skip to step 11.
-        // TODO(stevennovaryo): implement LayoutThread query that support this.
-        if let Some(_element) = self.maybe_element_root() {
-            debug!("descendant of containing block chain is not implemented");
-        }
-
         // Step 7
         // > Set targetRect to the DOMRectReadOnly obtained by getting the bounding box for target.
         // This is what we are currently using for getBoundingBox(). However, it is not correct,
@@ -510,12 +503,23 @@ impl IntersectionObserver {
         let root_bounds = maybe_root_bounds.unwrap();
         let target_rect = maybe_target_rect.unwrap();
 
+        // Step 6
+        // > If the intersection root is an Element, and target is not a descendant of
+        // > the intersection root in the containing block chain, skip to step 11.
+        // TODO(stevennovaryo): implement LayoutThread query that support this.
+        if let Some(element) = self.maybe_element_root() {
+            if !target.upcast::<Node>().is_descendant_of_other_node_no_reflow(element.upcast()) {
+                return IntersectionObservationOutput::default_skipped();
+            }
+        }
+
         // TODO(stevennovaryo): we should probably also consider adding visibity check, ideally
         //                      it would require new query from LayoutThread.
 
         // Step 8
         // > Let intersectionRect be the result of running the compute the intersection algorithm on
         // > target and observer’s intersection root.
+        // TODO: should make it output null if it doesnt intersect instead and is_interseting should use that
         let intersection_rect =
             compute_the_intersection(document, target, &self.root, root_bounds, target_rect);
 
@@ -551,12 +555,16 @@ impl IntersectionObserver {
         // > Set thresholdIndex to the index of the first entry in observer.thresholds whose value is
         // > greater than intersectionRatio, or the length of observer.thresholds if intersectionRatio is
         // > greater than or equal to the last entry in observer.thresholds.
-        let threshold_index = self
-            .thresholds
-            .borrow()
-            .iter()
-            .position(|threshold| **threshold > intersection_ratio)
-            .unwrap_or(self.thresholds.borrow().len()) as i32;
+        let threshold_index = if is_intersecting {
+            self
+                .thresholds
+                .borrow()
+                .iter()
+                .position(|threshold| **threshold > intersection_ratio)
+                .unwrap_or(self.thresholds.borrow().len()) as i32
+        } else {
+            0
+        };
 
         // Step 14
         // > Let isVisible be the result of running the visibility algorithm on target.
@@ -630,7 +638,7 @@ impl IntersectionObserver {
                     intersection_output.root_bounds,
                     intersection_output.target_rect,
                     intersection_output.intersection_rect,
-                    intersection_output.is_intersecting,
+                    intersection_output.threshold_index > 0,
                     intersection_output.is_visible,
                     intersection_output.intersection_ratio,
                     target,
@@ -876,6 +884,7 @@ fn compute_the_intersection(
 /// The values from computing step 2.2.4-2.2.14 in
 /// <https://w3c.github.io/IntersectionObserver/#update-intersection-observations-algo>.
 /// See [`IntersectionObserver::maybe_compute_intersection_output`].
+#[derive(Debug)]
 struct IntersectionObservationOutput {
     pub(crate) threshold_index: i32,
     pub(crate) is_intersecting: bool,
