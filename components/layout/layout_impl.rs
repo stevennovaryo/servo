@@ -235,7 +235,7 @@ impl Layout for LayoutThread {
             node,
             self.fragment_tree.borrow().clone(),
             self.id,
-            &*self.scroll_offsets.borrow(),
+            &self.scroll_offsets.borrow(),
         )
     }
 
@@ -248,7 +248,7 @@ impl Layout for LayoutThread {
             node,
             self.fragment_tree.borrow().clone(),
             self.id,
-            &*self.scroll_offsets.borrow(),
+            &self.scroll_offsets.borrow(),
         )
     }
 
