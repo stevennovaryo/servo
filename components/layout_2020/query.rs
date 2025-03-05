@@ -3,7 +3,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 //! Utilities for querying the layout, as needed by layout.
-use std::cell::Ref;
 use std::collections::HashMap;
 use std::hash::RandomState;
 use std::sync::Arc;
@@ -17,7 +16,7 @@ use log::warn;
 use script_layout_interface::wrapper_traits::{
     LayoutNode, ThreadSafeLayoutElement, ThreadSafeLayoutNode,
 };
-use script_layout_interface::{node_id_from_scroll_id, LayoutElementType, LayoutNodeType, OffsetParentResponse};
+use script_layout_interface::{LayoutElementType, LayoutNodeType, OffsetParentResponse};
 use servo_arc::Arc as ServoArc;
 use servo_url::ServoUrl;
 use style::computed_values::display::T as Display;
@@ -57,7 +56,8 @@ pub fn process_content_box_request(
     pipeline_id: PipelineId,
     scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
 ) -> Option<Rect<Au>> {
-    let rects = fragment_tree?.get_content_boxes_for_node_v2(requested_node, pipeline_id, scroll_offsets);
+    let rects =
+        fragment_tree?.get_content_boxes_for_node_v2(requested_node, pipeline_id, scroll_offsets);
     if rects.is_empty() {
         return None;
     }
@@ -75,7 +75,6 @@ pub fn process_content_boxes_request(
     pipeline_id: PipelineId,
     scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
 ) -> Vec<Rect<Au>> {
-
     fragment_tree
         .map(|tree| tree.get_content_boxes_for_node_v2(requested_node, pipeline_id, scroll_offsets))
         .unwrap_or_default()
@@ -1162,24 +1161,13 @@ where
     Some(computed_values.clone_font())
 }
 
-
 pub fn process_is_node_descendant_of_other_node_request(
     node: OpaqueNode,
     other_node: OpaqueNode,
-    scroll_offsets: Ref<HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>>,
     fragment_tree: Option<Arc<FragmentTree>>,
 ) -> bool {
     if let Some(fragment_tree) = fragment_tree {
-        // dbg!(node, other_node);
-        // for (key, val) in scroll_offsets.iter() {
-            // let node_id = node_id_from_scroll_id(key.0 as usize);
-        //     println!("key: {} {}::{} val: ({}, {})", node_id.unwrap_or_default(), key.pipeline_id().0, key.pipeline_id().1, val.x, val.y);
-        // }
-        // dbg!(scroll_offsets);
-        let is_descendant = fragment_tree.is_node_descendant_of_other_node(node, other_node);
-        // dbg!(is_descendant);
-        // fragment_tree.print();
-        is_descendant
+        fragment_tree.is_node_descendant_of_other_node(node, other_node)
     } else {
         false
     }

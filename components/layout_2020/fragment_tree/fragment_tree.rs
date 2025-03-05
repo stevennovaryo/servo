@@ -11,7 +11,6 @@ use base::print_tree::PrintTree;
 use euclid::default::{Point2D, Rect, Size2D};
 use euclid::Vector2D;
 use fxhash::FxHashSet;
-use script_layout_interface::{combine_id_with_fragment_type, FragmentType};
 use style::animation::AnimationSetKey;
 use style::computed_values::position::T as ComputedPosition;
 use style::dom::OpaqueNode;
@@ -22,6 +21,7 @@ use webrender_traits::display_list::AxesScrollSensitivity;
 use super::{ContainingBlockManager, Fragment, Tag};
 use crate::display_list::StackingContext;
 use crate::flow::CanvasBackground;
+use crate::fragment_tree::ContainingBlockQueryInfo;
 use crate::geom::{PhysicalPoint, PhysicalRect, PhysicalVec};
 use crate::style_ext::ComputedValuesExt;
 
@@ -105,24 +105,31 @@ impl FragmentTree {
         &self,
         pipeline_id: PipelineId,
         scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
-        mut process_func: impl FnMut(&Fragment, usize, &PhysicalRect<Au>) -> Option<T>,
+        mut process_func: impl FnMut(&Fragment, usize, &ContainingBlockQueryInfo) -> Option<T>,
     ) -> Option<T> {
-        let info = ContainingBlockManager {
-            for_non_absolute_descendants: &self.initial_containing_block,
-            for_absolute_descendants: None,
-            for_absolute_and_fixed_descendants: &self.initial_containing_block,
+        let scroll_offset = scroll_offsets
+            .get(&pipeline_id.root_scroll_id())
+            .map(|offset| PhysicalVec::new(Au::from_f32_px(offset.x), Au::from_f32_px(offset.y)))
+            .unwrap_or_default();
+
+        let initial_containing_block_info = ContainingBlockQueryInfo {
+            rect: self.initial_containing_block,
+            scroll_offset,
+        };
+        let fixed_initial_containing_block_info = ContainingBlockQueryInfo {
+            rect: self.initial_containing_block,
+            scroll_offset: Vector2D::zero(),
         };
 
-        let scroll_id = ExternalScrollId (
-            combine_id_with_fragment_type(0, FragmentType::FragmentBody), // We should consider After and Before Fragment as well
-            pipeline_id.into(),
-        );
-        let scroll_offset = scroll_offsets.get(&scroll_id).map(|offset| PhysicalVec::new(Au::from_f32_px(offset.x), Au::from_f32_px(offset.y))).unwrap_or_default();
-        dbg!(scroll_offset);
+        let info = ContainingBlockManager {
+            for_non_absolute_descendants: &initial_containing_block_info,
+            for_absolute_descendants: Some(&initial_containing_block_info),
+            for_absolute_and_fixed_descendants: &fixed_initial_containing_block_info,
+        };
 
-        self.root_fragments
-            .iter()
-            .find_map(|child| child.find_v2(pipeline_id, scroll_offsets, scroll_offset, &info, 0, &mut process_func))
+        self.root_fragments.iter().find_map(|child| {
+            child.find_v2(pipeline_id, scroll_offsets, &info, 0, &mut process_func)
+        })
     }
 
     /// Get the vector of rectangles that surrounds the fragments of the node with the given address.
@@ -162,30 +169,41 @@ impl FragmentTree {
     /// the `getBoundingClientRect()` query.
     ///
     /// TODO: This function is supposed to handle scroll offsets, but that isn't happening at all.
-    pub fn get_content_boxes_for_node_v2(&self, requested_node: OpaqueNode, pipeline_id: PipelineId, scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>) -> Vec<Rect<Au>> {
+    pub fn get_content_boxes_for_node_v2(
+        &self,
+        requested_node: OpaqueNode,
+        pipeline_id: PipelineId,
+        scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
+    ) -> Vec<Rect<Au>> {
         let mut content_boxes = Vec::new();
         let tag_to_find = Tag::new(requested_node);
-        self.find_v2(pipeline_id, scroll_offsets,|fragment, _, containing_block| {
-            if fragment.tag() != Some(tag_to_find) {
-                return None::<()>;
-            }
+        self.find_v2(
+            pipeline_id,
+            scroll_offsets,
+            |fragment, _, containing_block| {
+                if fragment.tag() != Some(tag_to_find) {
+                    return None::<()>;
+                }
 
-            let fragment_relative_rect = match fragment {
-                Fragment::Box(fragment) | Fragment::Float(fragment) => {
-                    fragment.borrow().border_rect()
-                },
-                Fragment::Positioning(fragment) => fragment.borrow().rect,
-                Fragment::Text(fragment) => fragment.borrow().rect,
-                Fragment::AbsoluteOrFixedPositioned(_) |
-                Fragment::Image(_) |
-                Fragment::IFrame(_) => return None,
-            };
+                let fragment_relative_rect = match fragment {
+                    Fragment::Box(fragment) | Fragment::Float(fragment) => {
+                        fragment.borrow().border_rect()
+                    },
+                    Fragment::Positioning(fragment) => fragment.borrow().rect,
+                    Fragment::Text(fragment) => fragment.borrow().rect,
+                    Fragment::AbsoluteOrFixedPositioned(_) |
+                    Fragment::Image(_) |
+                    Fragment::IFrame(_) => return None,
+                };
 
-            let rect = fragment_relative_rect.translate(containing_block.origin.to_vector());
+                let rect = fragment_relative_rect.translate(
+                    containing_block.rect.origin.to_vector() + containing_block.scroll_offset,
+                );
 
-            content_boxes.push(rect.to_untyped());
-            None::<()>
-        });
+                content_boxes.push(rect.to_untyped());
+                None::<()>
+            },
+        );
         content_boxes
     }
 
@@ -253,7 +271,6 @@ impl FragmentTree {
         });
         scroll_area.unwrap_or_else(PhysicalRect::<Au>::zero)
     }
-
 
     pub fn is_node_descendant_of_other_node(
         &self,
@@ -401,7 +418,6 @@ impl FragmentTree {
             };
 
             backtrack_paths.push(containing_block_info);
-
 
             if is_main_frame && fragment.tag() == Some(node_tag) {
                 // dbg!(fragment.tag());
