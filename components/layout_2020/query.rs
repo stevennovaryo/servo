@@ -40,8 +40,8 @@ use style::values::generics::font::LineHeight;
 use style::values::specified::GenericGridTemplateComponent;
 use style::values::specified::box_::DisplayInside;
 use style_traits::{ParsingMode, ToCss};
-use webrender_api::units::LayoutPixel;
 use webrender_api::ExternalScrollId;
+use webrender_api::units::LayoutPixel;
 
 use crate::flow::inline::construct::{TextTransformation, WhitespaceCollapse};
 use crate::fragment_tree::{

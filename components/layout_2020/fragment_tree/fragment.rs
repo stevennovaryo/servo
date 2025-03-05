@@ -11,12 +11,11 @@ use base::id::PipelineId;
 use base::print_tree::PrintTree;
 use euclid::Vector2D;
 use fonts::{FontMetrics, GlyphStore};
-use script_layout_interface::{combine_id_with_fragment_type, FragmentType};
+use script_layout_interface::{FragmentType, combine_id_with_fragment_type};
 use servo_arc::Arc as ServoArc;
 use style::Zero;
 use style::properties::ComputedValues;
 use style::values::specified::text::TextDecorationLine;
-use style::Zero;
 use webrender_api::units::LayoutPixel;
 use webrender_api::{ExternalScrollId, FontInstanceKey, ImageKey};
 
@@ -233,9 +232,10 @@ impl Fragment {
             Fragment::Box(fragment) | Fragment::Float(fragment) => {
                 let fragment = fragment.borrow();
 
+                // We should consider After and Before Fragment as well
                 let scroll_id = fragment.base.tag.map(|tag| {
                     ExternalScrollId(
-                        combine_id_with_fragment_type(tag.node.id(), FragmentType::FragmentBody), // We should consider After and Before Fragment as well
+                        combine_id_with_fragment_type(tag.node.id(), FragmentType::FragmentBody),
                         pipeline_id.into(),
                     )
                 });
@@ -281,9 +281,10 @@ impl Fragment {
             Fragment::Positioning(fragment) => {
                 let fragment = fragment.borrow();
 
+                // We should consider After and Before Fragment as well
                 let scroll_id = fragment.base.tag.map(|tag| {
                     ExternalScrollId(
-                        combine_id_with_fragment_type(tag.node.id(), FragmentType::FragmentBody), // We should consider After and Before Fragment as well
+                        combine_id_with_fragment_type(tag.node.id(), FragmentType::FragmentBody),
                         pipeline_id.into(),
                     )
                 });

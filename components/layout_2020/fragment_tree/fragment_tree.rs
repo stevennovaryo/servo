@@ -8,14 +8,14 @@ use std::hash::RandomState;
 use app_units::Au;
 use base::id::PipelineId;
 use base::print_tree::PrintTree;
-use euclid::default::{Point2D, Rect, Size2D};
 use euclid::Vector2D;
+use euclid::default::{Point2D, Rect, Size2D};
 use fxhash::FxHashSet;
 use style::animation::AnimationSetKey;
 use style::computed_values::position::T as ComputedPosition;
 use style::dom::OpaqueNode;
 use webrender_api::units::LayoutPixel;
-use webrender_api::{units, ExternalScrollId};
+use webrender_api::{ExternalScrollId, units};
 use webrender_traits::display_list::AxesScrollSensitivity;
 
 use super::{ContainingBlockManager, Fragment, Tag};
