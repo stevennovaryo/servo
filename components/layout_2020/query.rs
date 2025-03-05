@@ -9,6 +9,7 @@ use std::hash::RandomState;
 use std::sync::Arc;
 
 use app_units::Au;
+use base::id::PipelineId;
 use euclid::default::{Point2D, Rect};
 use euclid::{SideOffsets2D, Size2D, Vector2D};
 use itertools::Itertools;
@@ -53,8 +54,10 @@ use crate::taffy::SpecificTaffyGridInfo;
 pub fn process_content_box_request(
     requested_node: OpaqueNode,
     fragment_tree: Option<Arc<FragmentTree>>,
+    pipeline_id: PipelineId,
+    scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
 ) -> Option<Rect<Au>> {
-    let rects = fragment_tree?.get_content_boxes_for_node(requested_node);
+    let rects = fragment_tree?.get_content_boxes_for_node_v2(requested_node, pipeline_id, scroll_offsets);
     if rects.is_empty() {
         return None;
     }
@@ -69,9 +72,12 @@ pub fn process_content_box_request(
 pub fn process_content_boxes_request(
     requested_node: OpaqueNode,
     fragment_tree: Option<Arc<FragmentTree>>,
+    pipeline_id: PipelineId,
+    scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
 ) -> Vec<Rect<Au>> {
+
     fragment_tree
-        .map(|tree| tree.get_content_boxes_for_node(requested_node))
+        .map(|tree| tree.get_content_boxes_for_node_v2(requested_node, pipeline_id, scroll_offsets))
         .unwrap_or_default()
 }
 
