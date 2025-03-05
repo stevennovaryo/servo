@@ -859,7 +859,9 @@ impl Node {
     }
 
     pub(crate) fn is_descendant_of_other_node_no_reflow(&self, other_node: &Node) -> bool {
-        self.owner_doc().window().is_node_descendant_of_other_node_query_no_reflow(self, other_node)
+        self.owner_doc()
+            .window()
+            .is_node_descendant_of_other_node_query_no_reflow(self, other_node)
     }
 
     /// <https://drafts.csswg.org/cssom-view/#dom-element-scrollwidth>

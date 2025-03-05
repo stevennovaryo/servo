@@ -494,7 +494,7 @@ impl IntersectionObserver {
         // mainly because it is not considering transform and scroll offset.
         // TODO: replace this once getBoundingBox() is implemented correctly.
         let maybe_target_rect = target.upcast::<Node>().bounding_content_box_no_reflow();
-        dbg!(maybe_target_rect);
+
         // Following the implementation of Gecko, we will skip further processing if these
         // information not available. This would also handle display none element.
         if maybe_root_bounds.is_none() || maybe_target_rect.is_none() {
@@ -508,7 +508,10 @@ impl IntersectionObserver {
         // > the intersection root in the containing block chain, skip to step 11.
         // TODO(stevennovaryo): implement LayoutThread query that support this.
         if let Some(element) = self.maybe_element_root() {
-            if !target.upcast::<Node>().is_descendant_of_other_node_no_reflow(element.upcast()) {
+            if !target
+                .upcast::<Node>()
+                .is_descendant_of_other_node_no_reflow(element.upcast())
+            {
                 return IntersectionObservationOutput::default_skipped();
             }
         }
@@ -556,8 +559,7 @@ impl IntersectionObserver {
         // > greater than intersectionRatio, or the length of observer.thresholds if intersectionRatio is
         // > greater than or equal to the last entry in observer.thresholds.
         let threshold_index = if is_intersecting {
-            self
-                .thresholds
+            self.thresholds
                 .borrow()
                 .iter()
                 .position(|threshold| **threshold > intersection_ratio)
@@ -607,7 +609,6 @@ impl IntersectionObserver {
             // Step 3
             // > Set registration.lastUpdateTime to time.
             registration.last_update_time.set(time);
-            dbg!(root_bounds);
 
             // step 4-14
             let intersection_output =
@@ -633,6 +634,7 @@ impl IntersectionObserver {
             {
                 // TODO(stevennovaryo): Per IntersectionObserverEntry interface, the rootBounds
                 //                      should be null for cross-origin-domain target.
+                dbg!(&intersection_output);
                 self.queue_an_intersectionobserverentry(
                     document,
                     time,

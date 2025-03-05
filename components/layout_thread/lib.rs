@@ -489,6 +489,15 @@ impl Layout for LayoutThread {
     fn set_epoch_paint_time(&mut self, epoch: Epoch, paint_time: CrossProcessInstant) {
         self.paint_time_metrics.maybe_set_metric(epoch, paint_time);
     }
+
+    fn query_is_node_descendant_of_other_node(
+        &self,
+        _node: OpaqueNode,
+        _other_node: OpaqueNode,
+    ) -> bool {
+        debug!("query_is_node_descendant_of_other_node is not implemented for layout 2013");
+        true
+    }
 }
 impl LayoutThread {
     fn root_flow_for_query(&self) -> Option<FlowRef> {
