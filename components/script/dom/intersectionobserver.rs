@@ -494,7 +494,7 @@ impl IntersectionObserver {
         // mainly because it is not considering transform and scroll offset.
         // TODO: replace this once getBoundingBox() is implemented correctly.
         let maybe_target_rect = target.upcast::<Node>().bounding_content_box_no_reflow();
-
+        dbg!(maybe_target_rect);
         // Following the implementation of Gecko, we will skip further processing if these
         // information not available. This would also handle display none element.
         if maybe_root_bounds.is_none() || maybe_target_rect.is_none() {
@@ -607,6 +607,7 @@ impl IntersectionObserver {
             // Step 3
             // > Set registration.lastUpdateTime to time.
             registration.last_update_time.set(time);
+            dbg!(root_bounds);
 
             // step 4-14
             let intersection_output =

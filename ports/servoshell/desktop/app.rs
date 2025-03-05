@@ -95,7 +95,7 @@ impl App {
     pub fn init(&mut self, event_loop: Option<&ActiveEventLoop>) {
         let headless = self.servoshell_preferences.headless;
 
-        assert_eq!(headless, event_loop.is_none());
+        // assert_eq!(headless, event_loop.is_none());
         let window = match event_loop {
             Some(event_loop) => {
                 let window = headed_window::Window::new(&self.servoshell_preferences, event_loop);

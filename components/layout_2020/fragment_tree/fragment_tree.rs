@@ -22,7 +22,7 @@ use webrender_traits::display_list::AxesScrollSensitivity;
 use super::{ContainingBlockManager, Fragment, Tag};
 use crate::display_list::StackingContext;
 use crate::flow::CanvasBackground;
-use crate::geom::{PhysicalPoint, PhysicalRect};
+use crate::geom::{PhysicalPoint, PhysicalRect, PhysicalVec};
 use crate::style_ext::ComputedValuesExt;
 
 pub struct FragmentTree {
@@ -112,9 +112,17 @@ impl FragmentTree {
             for_absolute_descendants: None,
             for_absolute_and_fixed_descendants: &self.initial_containing_block,
         };
+
+        let scroll_id = ExternalScrollId (
+            combine_id_with_fragment_type(0, FragmentType::FragmentBody), // We should consider After and Before Fragment as well
+            pipeline_id.into(),
+        );
+        let scroll_offset = scroll_offsets.get(&scroll_id).map(|offset| PhysicalVec::new(Au::from_f32_px(offset.x), Au::from_f32_px(offset.y))).unwrap_or_default();
+        dbg!(scroll_offset);
+
         self.root_fragments
             .iter()
-            .find_map(|child| child.find_v2(pipeline_id, scroll_offsets, Vector2D::zero(), &info, 0, &mut process_func))
+            .find_map(|child| child.find_v2(pipeline_id, scroll_offsets, scroll_offset, &info, 0, &mut process_func))
     }
 
     /// Get the vector of rectangles that surrounds the fragments of the node with the given address.
@@ -154,7 +162,7 @@ impl FragmentTree {
     /// the `getBoundingClientRect()` query.
     ///
     /// TODO: This function is supposed to handle scroll offsets, but that isn't happening at all.
-    pub fn get_content_boxes_for_node(&self, requested_node: OpaqueNode, pipeline_id: PipelineId, scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>) -> Vec<Rect<Au>> {
+    pub fn get_content_boxes_for_node_v2(&self, requested_node: OpaqueNode, pipeline_id: PipelineId, scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>) -> Vec<Rect<Au>> {
         let mut content_boxes = Vec::new();
         let tag_to_find = Tag::new(requested_node);
         self.find_v2(pipeline_id, scroll_offsets,|fragment, _, containing_block| {
