@@ -377,6 +377,7 @@ impl TouchHandler {
         id: TouchId,
         point: Point2D<f32, DevicePixel>,
     ) -> TouchMoveAction {
+        return TouchMoveAction::NoAction;
         let touch_sequence = self.get_current_touch_sequence_mut();
         let idx = match touch_sequence
             .active_touch_points
@@ -385,7 +386,8 @@ impl TouchHandler {
         {
             Some(i) => i,
             None => {
-                unreachable!("Got a touchmove event for a non-active touch point");
+                // unreachable!("Got a touchmove event for a non-active touch point");
+                return TouchMoveAction::NoAction;
             },
         };
         let old_point = touch_sequence.active_touch_points[idx].point;

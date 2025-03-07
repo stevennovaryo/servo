@@ -296,7 +296,6 @@ impl CSSStyleDeclaration {
             return Ok(());
         }
 
-        // dbg!(&id, &value, &priority);
         self.owner.mutate_associated_block(
             |pdb, changed| {
                 if value.is_empty() {

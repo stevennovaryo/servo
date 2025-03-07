@@ -828,7 +828,6 @@ impl LayoutThread {
         }
 
         self.first_reflow.set(false);
-
         if let ReflowGoal::UpdateScrollNode(scroll_state) = reflow_request.reflow_goal {
             self.update_scroll_node_state(&scroll_state);
         }
@@ -847,6 +846,7 @@ impl LayoutThread {
             .borrow_mut()
             .insert(state.scroll_id, state.scroll_offset);
         let point = Point2D::new(-state.scroll_offset.x, -state.scroll_offset.y);
+        dbg!(state);
         self.compositor_api.send_scroll_node(
             self.webview_id,
             self.id.into(),

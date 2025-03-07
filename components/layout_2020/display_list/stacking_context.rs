@@ -1059,6 +1059,7 @@ impl BoxFragment {
         // but all fragments that establish reference frames also establish
         // containing blocks for absolute and fixed descendants, so those
         // properties will be replaced before recursing into children.
+        // MYNOTES
         assert!(
             self.style
                 .establishes_containing_block_for_all_descendants(self.base.flags)

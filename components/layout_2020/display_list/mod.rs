@@ -257,8 +257,8 @@ impl Fragment {
                         is_hit_test_for_scrollable_overflow,
                         is_collapsed_table_borders,
                     )
-                    .build(builder, section),
-                    Visibility::Hidden => (),
+                    .build(builder, section), // We cold add reference to box fragment here
+                    Visibility::Hidden => (), // Hidden for display list is ignored
                     Visibility::Collapse => (),
                 }
             },

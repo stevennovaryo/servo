@@ -691,6 +691,7 @@ impl IOCompositor {
                 };
 
                 let offset = LayoutVector2D::new(point.x, point.y);
+                dbg!(offset);
                 if !pipeline_details
                     .scroll_tree
                     .set_scroll_offsets_for_node_with_external_scroll_id(
@@ -714,6 +715,7 @@ impl IOCompositor {
                 self.global.borrow_mut().send_transaction(txn);
             },
 
+            // MYNOTES This will update our resources that mirrors those of display list.
             CrossProcessCompositorMessage::SendDisplayList {
                 webview_id,
                 display_list_info,

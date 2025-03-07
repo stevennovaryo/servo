@@ -2276,6 +2276,9 @@ impl Window {
             combine_id_with_fragment_type(node.to_opaque().id(), FragmentType::FragmentBody),
             self.pipeline_id().into(),
         );
+        dbg!(&self.scroll_offset_query(node));
+        dbg!(node.downcast::<Element>().expect("REASON").summarize());
+        dbg!(self.layout.borrow_mut().query_content_box(node.to_opaque()));
 
         // Step 12
         self.perform_a_scroll(
