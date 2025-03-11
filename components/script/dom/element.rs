@@ -1569,6 +1569,7 @@ impl Element {
     }
 
     pub(crate) fn push_attribute(&self, attr: &Attr) {
+        dbg!(attr.value());
         let name = attr.local_name().clone();
         let namespace = attr.namespace().clone();
         let mutation = LazyCell::new(|| Mutation::Attribute {
@@ -3590,6 +3591,7 @@ impl VirtualMethods for Element {
     }
 
     fn attribute_mutated(&self, attr: &Attr, mutation: AttributeMutation) {
+        dbg!("attribute_mutated");
         self.super_type().unwrap().attribute_mutated(attr, mutation);
         let node = self.upcast::<Node>();
         let doc = node.owner_doc();
@@ -3616,6 +3618,7 @@ impl VirtualMethods for Element {
                                 _ => unreachable!(),
                             };
                             let mut value = AttrValue::String(serialization);
+                            dbg!(&value);
                             attr.swap_value(&mut value);
                             block
                         } else {

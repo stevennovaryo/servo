@@ -216,7 +216,7 @@ impl Layout for LayoutThread {
         let guard = stylesheet.shared_lock.read();
         let stylesheet = DocumentStyleSheet(stylesheet.clone());
         self.load_all_web_fonts_from_stylesheet_with_guard(&stylesheet, &guard);
-
+        // dbg!(&stylesheet);
         match before_stylesheet {
             Some(insertion_point) => self.stylist.insert_stylesheet_before(
                 stylesheet,
@@ -639,6 +639,10 @@ impl LayoutThread {
         tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn handle_reflow(&mut self, mut reflow_request: ReflowRequest) -> Option<ReflowResult> {
+        println!("=============================================================================");
+        println!("============================= NEW HANDLE REFLOW =============================");
+        println!("=============================================================================");
+        dbg!(&reflow_request.animations);
         let document = unsafe { ServoLayoutNode::new(&reflow_request.document) };
         let document = document.as_document().unwrap();
         let Some(root_element) = document.root_element() else {
@@ -730,6 +734,7 @@ impl LayoutThread {
             // Stash the data on the element for processing by the style system.
             style_data.hint.insert(restyle.hint);
             style_data.damage = restyle.damage;
+            println!("Noting restyle for {:?}: {:?}", el.id(), style_data.styles);
             debug!("Noting restyle for {:?}: {:?}", el, style_data);
         }
 
@@ -739,9 +744,11 @@ impl LayoutThread {
         let rayon_pool = rayon_pool.pool();
         let rayon_pool = rayon_pool.as_ref();
 
+        // dbg!(&reflow_request.animations);
         // Create a layout context for use throughout the following passes.
         let mut layout_context =
             self.build_layout_context(guards.clone(), &map, &reflow_request, rayon_pool.is_some());
+        // dbg!(&layout_context.style_context.animations.sets);
 
         let dirty_root = unsafe {
             ServoLayoutNode::new(&reflow_request.dirty_root.unwrap())
@@ -754,6 +761,7 @@ impl LayoutThread {
             let shared = DomTraversal::<ServoLayoutElement>::shared_context(&traversal);
             RecalcStyle::pre_traverse(dirty_root, shared)
         };
+        // dbg!(&traversal.context().style_context.animations.sets);
 
         if token.should_traverse() {
             #[cfg(feature = "tracing")]
@@ -761,6 +769,8 @@ impl LayoutThread {
                 tracing::trace_span!("driver::traverse_dom", servo_profiling = true).entered();
             let dirty_root: ServoLayoutNode =
                 driver::traverse_dom(&traversal, token, rayon_pool).as_node();
+
+            dbg!(&traversal.context().style_context.animations.sets);
 
             let root_node = root_element.as_node();
             let mut box_tree = self.box_tree.borrow_mut();
@@ -775,6 +785,8 @@ impl LayoutThread {
             } else {
                 build_box_tree()
             };
+
+            // dbg!(&traversal.context().style_context.animations.sets);
 
             let viewport_size = Size2D::new(
                 self.viewport_size.width.to_f32_px(),
@@ -795,6 +807,7 @@ impl LayoutThread {
         }
 
         layout_context = traversal.destroy();
+        // dbg!(&layout_context.style_context.animations.sets);
 
         for element in elements_with_snapshot {
             unsafe { element.unset_snapshot_flags() }
@@ -861,11 +874,13 @@ impl LayoutThread {
         reflow_goal: &ReflowGoal,
         context: &mut LayoutContext,
     ) {
+        dbg!(&context.style_context.animations);
         Self::cancel_animations_for_nodes_not_in_fragment_tree(
             &context.style_context.animations,
             &fragment_tree,
         );
 
+        dbg!(reflow_goal.needs_display_list());
         if !reflow_goal.needs_display_list() {
             return;
         }
@@ -918,6 +933,7 @@ impl LayoutThread {
         self.paint_time_metrics
             .maybe_observe_paint_time(self, epoch, is_contentful);
 
+        dbg!(reflow_goal.needs_display());
         if reflow_goal.needs_display() {
             self.compositor_api.send_display_list(
                 self.webview_id,

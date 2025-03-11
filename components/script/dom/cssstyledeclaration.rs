@@ -17,7 +17,7 @@ use style::properties::{
 use style::selector_parser::PseudoElement;
 use style::shared_lock::Locked;
 use style::stylesheets::{CssRuleType, Origin, UrlExtraData};
-use style_traits::ParsingMode;
+use style_traits::{ParsingMode, ToCss};
 
 use crate::dom::bindings::codegen::Bindings::CSSStyleDeclarationBinding::CSSStyleDeclarationMethods;
 use crate::dom::bindings::codegen::Bindings::WindowBinding::WindowMethods;
@@ -88,6 +88,7 @@ impl CSSStyleOwner {
 
                     result
                 };
+                dbg!(changed);
 
                 if changed {
                     // Note that there's no need to remove the attribute here if
@@ -287,6 +288,8 @@ impl CSSStyleDeclaration {
         priority: DOMString,
         can_gc: CanGc,
     ) -> ErrorResult {
+        dbg!(&id.to_css_string(), &value, &priority);
+
         // Step 1
         if self.readonly {
             return Err(Error::NoModificationAllowed);

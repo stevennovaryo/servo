@@ -4111,6 +4111,7 @@ impl Document {
         // right now is populate the element restyle data in layout, and we
         // could in theory do it in the DOM I think.
         let mut entry = self.ensure_pending_restyle(el);
+        dbg!(&entry);
         if entry.snapshot.is_none() {
             entry.snapshot = Some(Snapshot::new());
         }

@@ -1944,6 +1944,7 @@ impl Window {
             .or_else(|| document.GetDocumentElement())
             .map(|root| root.upcast::<Node>().to_trusted_node_address());
 
+        dbg!(&pending_restyles);
         // Send new document and relevant styles to layout.
         let reflow = ReflowRequest {
             reflow_info: Reflow {
@@ -2013,6 +2014,7 @@ impl Window {
         document.update_animations_post_reflow();
         self.update_constellation_epoch();
 
+        dbg!(&document.animations().sets);
         true
     }
 

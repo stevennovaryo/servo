@@ -691,7 +691,7 @@ impl IOCompositor {
                 };
 
                 let offset = LayoutVector2D::new(point.x, point.y);
-                dbg!(offset);
+                // dbg!(offset);
                 if !pipeline_details
                     .scroll_tree
                     .set_scroll_offsets_for_node_with_external_scroll_id(

@@ -152,6 +152,7 @@ impl Animations {
         self.root_newly_animating_dom_nodes(&sets);
 
         for (key, set) in sets.iter_mut() {
+            println!("do_post_reflow_update: {:?}, {:?}", key, set);
             self.handle_canceled_animations(key, set, now, pipeline_id);
             self.handle_new_animations(key, set, now, pipeline_id);
         }
@@ -313,6 +314,7 @@ impl Animations {
         now: f64,
         pipeline_id: PipelineId,
     ) {
+        // print!("{:?} {:?}", set.animations, set.transitions);
         for animation in set.animations.iter_mut() {
             animation.is_new = false;
         }
@@ -416,6 +418,7 @@ impl Animations {
         now: f64,
         pipeline_id: PipelineId,
     ) {
+        dbg!("add_animation_event");
         let iteration_index = match animation.iteration_state {
             KeyframesIterationState::Finite(current, _) |
             KeyframesIterationState::Infinite(current) => current,
