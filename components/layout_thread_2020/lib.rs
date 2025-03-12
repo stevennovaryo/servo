@@ -770,6 +770,7 @@ impl LayoutThread {
             let dirty_root: ServoLayoutNode =
                 driver::traverse_dom(&traversal, token, rayon_pool).as_node();
 
+            // dbg!(&traversal.context().style_context.stylist.stylesheets);
             dbg!(&traversal.context().style_context.animations.sets);
 
             let root_node = root_element.as_node();

@@ -420,7 +420,10 @@ pub trait ThreadSafeLayoutElement<'dom>:
     fn style(&self, context: &SharedStyleContext) -> Arc<ComputedValues> {
         let data = self.style_data();
         match self.get_pseudo_element_type() {
-            PseudoElementType::Normal => data.styles.primary().clone(),
+            PseudoElementType::Normal => {
+                // dbg!(&data.styles.primary().clone().get_box().transform);
+                data.styles.primary().clone()
+            },
             other => {
                 // Precompute non-eagerly-cascaded pseudo-element styles if not
                 // cached before.
