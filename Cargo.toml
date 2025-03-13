@@ -117,25 +117,25 @@ rustls-pemfile = "2.0"
 rustls-pki-types = "1.11"
 script_layout_interface = { path = "components/shared/script_layout" }
 script_traits = { path = "components/shared/script" }
-selectors = { git = "https://github.com/servo/stylo", branch = "2025-03-12" }
+selectors = { git = "https://github.com/stevennovaryo/stylo", branch = "testing-transition-finished" }
 serde = "1.0.219"
 serde_bytes = "0.11"
 serde_json = "1.0"
 servo-media = { git = "https://github.com/servo/media" }
 servo-media-dummy = { git = "https://github.com/servo/media" }
 servo-media-gstreamer = { git = "https://github.com/servo/media" }
-servo_arc = { git = "https://github.com/servo/stylo", branch = "2025-03-12", features = ["servo"] }
-stylo_atoms = { git = "https://github.com/servo/stylo", branch = "2025-03-12" }
+servo_arc = { git = "https://github.com/stevennovaryo/stylo", branch = "testing-transition-finished", features = ["servo"] }
+stylo_atoms = { git = "https://github.com/stevennovaryo/stylo", branch = "testing-transition-finished" }
 smallbitvec = "2.6.0"
 smallvec = "1.14"
 static_assertions = "1.1"
 string_cache = "0.8"
 string_cache_codegen = "0.5"
-style = { git = "https://github.com/servo/stylo", branch = "2025-03-12", features = ["servo"] }
-stylo_config = { git = "https://github.com/servo/stylo", branch = "2025-03-12" }
-stylo_dom = { git = "https://github.com/servo/stylo", branch = "2025-03-12" }
-style_malloc_size_of = { package = "malloc_size_of", git = "https://github.com/servo/stylo", branch = "2025-03-12", features = ["servo"] }
-style_traits = { git = "https://github.com/servo/stylo", branch = "2025-03-12", features = ["servo"] }
+style = { git = "https://github.com/stevennovaryo/stylo", branch = "testing-transition-finished", features = ["servo"] }
+stylo_config = { git = "https://github.com/stevennovaryo/stylo", branch = "testing-transition-finished" }
+stylo_dom = { git = "https://github.com/stevennovaryo/stylo", branch = "testing-transition-finished" }
+style_malloc_size_of = { package = "malloc_size_of", git = "https://github.com/stevennovaryo/stylo", branch = "testing-transition-finished", features = ["servo"] }
+style_traits = { git = "https://github.com/stevennovaryo/stylo", branch = "testing-transition-finished", features = ["servo"] }
 surfman = { git = "https://github.com/servo/surfman", rev = "f7688b4585f9e0b5d4bf8ee8e4a91e82349610b1", features = ["chains"] }
 syn = { version = "2", default-features = false, features = ["clone-impls", "derive", "parsing"] }
 synstructure = "0.13"
@@ -212,16 +212,14 @@ codegen-units = 1
 # Or for Stylo:
 #
 # [patch."https://github.com/servo/stylo"]
-# selectors = { path = "../stylo/selectors" }
-# servo_arc = { path = "../stylo/servo_arc" }
-# stylo_atoms = { path = "../stylo/atoms" }
-# static_prefs = { path = "../stylo/style_static_prefs" }
-# style = { path = "../stylo/style" }
-# stylo_config = { path = "../stylo/stylo_config" }
-# style_derive = { path = "../stylo/style_derive" }
-# stylo_dom = { path = "../stylo/dom", package = "dom" }
-# style_malloc_size_of = { path = "../stylo/malloc_size_of", package = "malloc_size_of" }
-# style_traits = { path = "../stylo/style_traits" }
+# selectors = { path = "../dev/stylo/selectors" }
+# servo_arc = { path = "../dev/stylo/servo_arc" }
+# style = { path = "../dev/stylo/style" }
+# style_malloc_size_of = { path = "../dev/stylo/malloc_size_of", package = "malloc_size_of" }
+# style_traits = { path = "../dev/stylo/style_traits" }
+# stylo_atoms = { path = "../dev/stylo/stylo_atoms" }
+# stylo_config = { path = "../dev/stylo/stylo_config" }
+# stylo_dom = { path = "../dev/stylo/stylo_dom" }
 #
 # Or for WebRender:
 #
