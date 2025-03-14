@@ -102,33 +102,35 @@ impl<'a, T> ContainingBlockManager<'a, T> {
     }
 }
 
-/// Containing block rect with additional information required for a query.
-pub(crate) struct ContainingBlockQueryInfo {
-    /// Containing block rect, that bounds the children.
-    pub(crate) rect: PhysicalRect<Au>,
+// /// Containing block rect with additional information required for a query.
+// pub(crate) struct ContainingBlockQueryInfo {
+//     /// Containing block rect, that bounds the children.
+//     pub(crate) rect: PhysicalRect<Au>,
 
-    /// The scroll offset of the containing block has.
-    pub(crate) scroll_offset: PhysicalVec<Au>,
-}
+//     /// The scroll offset of the containing block has.
+//     pub(crate) scroll_offset: PhysicalVec<Au>,
+// }
 
-impl ContainingBlockQueryInfo {
-    /// Transform child's rectangle according to containing block transformation.
-    /// TODO: this is supposed to handle CSS transform but it is not happening.
-    pub(crate) fn transform_rect_relative_to_self(
-        &self,
-        rect: PhysicalRect<Au>,
-    ) -> PhysicalRect<Au> {
-        rect.translate(self.rect.origin.to_vector() + self.scroll_offset)
-    }
+// impl ContainingBlockQueryInfo {
+//     /// Transform child's rectangle according to this containing block transformation.
+//     /// TODO: this is supposed to handle CSS transform but it is not happening.
+//     pub(crate) fn transform_rect_relative_to_self(
+//         &self,
+//         rect: PhysicalRect<Au>,
+//     ) -> PhysicalRect<Au> {
+//         rect.translate(self.rect.origin.to_vector() + self.scroll_offset)
+//     }
 
-    pub(crate) fn new_relative_transformed_child(
-        &self,
-        rect: PhysicalRect<Au>,
-        scroll_offset: PhysicalVec<Au>,
-    ) -> ContainingBlockQueryInfo {
-        ContainingBlockQueryInfo {
-            rect: self.transform_rect_relative_to_self(rect),
-            scroll_offset,
-        }
-    }
-}
+//     /// New containing block that is a child of this containing block with
+//     /// ancestor's transformation applied.
+//     pub(crate) fn new_relative_transformed_child(
+//         &self,
+//         rect: PhysicalRect<Au>,
+//         scroll_offset: PhysicalVec<Au>,
+//     ) -> ContainingBlockQueryInfo {
+//         ContainingBlockQueryInfo {
+//             rect: self.transform_rect_relative_to_self(rect),
+//             scroll_offset,
+//         }
+//     }
+// }

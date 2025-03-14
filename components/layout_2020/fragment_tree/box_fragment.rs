@@ -105,8 +105,10 @@ impl BoxFragment {
         clearance: Option<Au>,
         block_margins_collapsed_with_children: CollapsedBlockMargins,
     ) -> BoxFragment {
+        dbg!("I AM HERE");
         let scrollable_overflow_from_children =
             children.iter().fold(PhysicalRect::zero(), |acc, child| {
+                dbg!(&child.scrollable_overflow());
                 acc.union(&child.scrollable_overflow())
             });
 
@@ -185,6 +187,7 @@ impl BoxFragment {
     pub fn scrollable_overflow(&self) -> PhysicalRect<Au> {
         let physical_padding_rect = self.padding_rect();
         let content_origin = self.content_rect.origin.to_vector();
+        // dbg!("I AM HERE");
         physical_padding_rect.union(
             &self
                 .scrollable_overflow_from_children

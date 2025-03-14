@@ -4177,6 +4177,7 @@ dependencies = [
  "servo_config",
  "servo_geometry",
  "servo_url",
+ "smallvec",
  "style",
  "style_traits",
  "taffy",
