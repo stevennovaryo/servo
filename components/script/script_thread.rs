@@ -1140,9 +1140,9 @@ impl ScriptThread {
     /// Attempt to update the rendering and then do a microtask checkpoint if rendering was actually
     /// updated.
     pub(crate) fn update_the_rendering(&self, requested_by_compositor: bool, can_gc: CanGc) {
-        println!("================================================================================");
-        println!("============================= UPDATE THE RENDERING =============================");
-        println!("================================================================================");
+        // println!("================================================================================");
+        // println!("============================= UPDATE THE RENDERING =============================");
+        // println!("================================================================================");
         *self.last_render_opportunity_time.borrow_mut() = Some(Instant::now());
 
         if !self.can_continue_running_inner() {
@@ -1202,7 +1202,7 @@ impl ScriptThread {
             if !document.is_fully_active() {
                 continue;
             }
-            dbg!(&document.animations().sets);
+            // dbg!(&document.animations().sets);
 
             // TODO(#31581): The steps in the "Revealing the document" section need to be implemented
             // `process_pending_input_events` handles the focusing steps as well as other events

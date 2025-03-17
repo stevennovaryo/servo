@@ -639,10 +639,10 @@ impl LayoutThread {
         tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn handle_reflow(&mut self, mut reflow_request: ReflowRequest) -> Option<ReflowResult> {
-        println!("=============================================================================");
-        println!("============================= NEW HANDLE REFLOW =============================");
-        println!("=============================================================================");
-        dbg!(&reflow_request.animations);
+        // println!("=============================================================================");
+        // println!("============================= NEW HANDLE REFLOW =============================");
+        // println!("=============================================================================");
+        // dbg!(&reflow_request.animations);
         let document = unsafe { ServoLayoutNode::new(&reflow_request.document) };
         let document = document.as_document().unwrap();
         let Some(root_element) = document.root_element() else {
@@ -734,8 +734,8 @@ impl LayoutThread {
             // Stash the data on the element for processing by the style system.
             style_data.hint.insert(restyle.hint);
             style_data.damage = restyle.damage;
-            println!("Noting restyle for {:?}: {:?}", el.id(), style_data.styles);
-            debug!("Noting restyle for {:?}: {:?}", el, style_data);
+            // println!("Noting restyle for {:?}: {:?}", el.id(), style_data.styles);
+            // debug!("Noting restyle for {:?}: {:?}", el, style_data);
         }
 
         self.stylist.flush(&guards, Some(root_element), Some(&map));
@@ -771,7 +771,7 @@ impl LayoutThread {
                 driver::traverse_dom(&traversal, token, rayon_pool).as_node();
 
             // dbg!(&traversal.context().style_context.stylist.stylesheets);
-            dbg!(&traversal.context().style_context.animations.sets);
+            // dbg!(&traversal.context().style_context.animations.sets);
 
             let root_node = root_element.as_node();
             let mut box_tree = self.box_tree.borrow_mut();
@@ -860,7 +860,7 @@ impl LayoutThread {
             .borrow_mut()
             .insert(state.scroll_id, state.scroll_offset);
         let point = Point2D::new(-state.scroll_offset.x, -state.scroll_offset.y);
-        dbg!(state);
+        // dbg!(state);
         self.compositor_api.send_scroll_node(
             self.webview_id,
             self.id.into(),
@@ -875,13 +875,13 @@ impl LayoutThread {
         reflow_goal: &ReflowGoal,
         context: &mut LayoutContext,
     ) {
-        dbg!(&context.style_context.animations);
+        // dbg!(&context.style_context.animations);
         Self::cancel_animations_for_nodes_not_in_fragment_tree(
             &context.style_context.animations,
             &fragment_tree,
         );
 
-        dbg!(reflow_goal.needs_display_list());
+        // dbg!(reflow_goal.needs_display_list());
         if !reflow_goal.needs_display_list() {
             return;
         }

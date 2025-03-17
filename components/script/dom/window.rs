@@ -1944,7 +1944,7 @@ impl Window {
             .or_else(|| document.GetDocumentElement())
             .map(|root| root.upcast::<Node>().to_trusted_node_address());
 
-        dbg!(&pending_restyles);
+        // dbg!(&pending_restyles);
         // Send new document and relevant styles to layout.
         let reflow = ReflowRequest {
             reflow_info: Reflow {
@@ -2014,7 +2014,7 @@ impl Window {
         document.update_animations_post_reflow();
         self.update_constellation_epoch();
 
-        dbg!(&document.animations().sets);
+        // dbg!(&document.animations().sets);
         true
     }
 
@@ -2278,9 +2278,9 @@ impl Window {
             combine_id_with_fragment_type(node.to_opaque().id(), FragmentType::FragmentBody),
             self.pipeline_id().into(),
         );
-        dbg!(&self.scroll_offset_query(node));
-        dbg!(node.downcast::<Element>().expect("REASON").summarize());
-        dbg!(self.layout.borrow_mut().query_content_box(node.to_opaque()));
+        // dbg!(&self.scroll_offset_query(node));
+        // dbg!(node.downcast::<Element>().expect("REASON").summarize());
+        // dbg!(self.layout.borrow_mut().query_content_box(node.to_opaque()));
 
         // Step 12
         self.perform_a_scroll(

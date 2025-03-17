@@ -418,7 +418,7 @@ impl Animations {
         now: f64,
         pipeline_id: PipelineId,
     ) {
-        dbg!("add_animation_event");
+        // dbg!("add_animation_event");
         let iteration_index = match animation.iteration_state {
             KeyframesIterationState::Finite(current, _) |
             KeyframesIterationState::Infinite(current) => current,

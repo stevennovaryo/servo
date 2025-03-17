@@ -105,10 +105,10 @@ impl BoxFragment {
         clearance: Option<Au>,
         block_margins_collapsed_with_children: CollapsedBlockMargins,
     ) -> BoxFragment {
-        dbg!("I AM HERE");
+        // dbg!("I AM HERE");
         let scrollable_overflow_from_children =
             children.iter().fold(PhysicalRect::zero(), |acc, child| {
-                dbg!(&child.scrollable_overflow());
+                // dbg!(&child.scrollable_overflow());
                 acc.union(&child.scrollable_overflow())
             });
 

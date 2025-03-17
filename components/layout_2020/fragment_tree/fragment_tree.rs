@@ -18,11 +18,13 @@ use webrender_api::units::LayoutPixel;
 use webrender_api::{ExternalScrollId, units};
 use webrender_traits::display_list::AxesScrollSensitivity;
 
-use super::{ContainingBlockManager, Fragment, Tag};
+use super::{
+    ContainingBlockManager, Fragment, FragmentTreeQueryContext,
+    FragmentTreeQueryManager, Tag,
+};
 use crate::display_list::StackingContext;
 use crate::flow::CanvasBackground;
-use crate::fragment_tree::ContainingBlockQueryInfo;
-use crate::geom::{PhysicalPoint, PhysicalRect, PhysicalVec};
+use crate::geom::{PhysicalPoint, PhysicalRect};
 use crate::style_ext::ComputedValuesExt;
 
 pub struct FragmentTree {
@@ -88,6 +90,7 @@ impl FragmentTree {
             for_absolute_descendants: None,
             for_absolute_and_fixed_descendants: &self.initial_containing_block,
         };
+
         self.root_fragments
             .iter()
             .find_map(|child| child.find(&info, 0, &mut process_func))
@@ -103,33 +106,12 @@ impl FragmentTree {
 
     pub(crate) fn find_v2<T>(
         &self,
-        pipeline_id: PipelineId,
-        scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
-        mut process_func: impl FnMut(&Fragment, usize, &ContainingBlockQueryInfo) -> Option<T>,
+        find_manager: &mut impl FragmentTreeQueryManager<T>,
+        mut process_func: impl FnMut(&Fragment, &dyn FragmentTreeQueryManager<T>) -> Option<T>,
     ) -> Option<T> {
-        let scroll_offset = scroll_offsets
-            .get(&pipeline_id.root_scroll_id())
-            .map(|offset| PhysicalVec::new(Au::from_f32_px(offset.x), Au::from_f32_px(offset.y)))
-            .unwrap_or_default();
-
-        let initial_containing_block_info = ContainingBlockQueryInfo {
-            rect: self.initial_containing_block,
-            scroll_offset,
-        };
-        let fixed_initial_containing_block_info = ContainingBlockQueryInfo {
-            rect: self.initial_containing_block,
-            scroll_offset: Vector2D::zero(),
-        };
-
-        let info = ContainingBlockManager {
-            for_non_absolute_descendants: &initial_containing_block_info,
-            for_absolute_descendants: Some(&initial_containing_block_info),
-            for_absolute_and_fixed_descendants: &fixed_initial_containing_block_info,
-        };
-
-        self.root_fragments.iter().find_map(|child| {
-            child.find_v2(pipeline_id, scroll_offsets, &info, 0, &mut process_func)
-        })
+        self.root_fragments
+            .iter()
+            .find_map(|child| child.find_v2(find_manager, &mut process_func))
     }
 
     /// Get the vector of rectangles that surrounds the fragments of the node with the given address.
@@ -177,13 +159,16 @@ impl FragmentTree {
     ) -> Vec<Rect<Au>> {
         let mut content_boxes = Vec::new();
         let tag_to_find = Tag::new(requested_node);
+
+        let mut find_manager = FragmentTreeQueryContext::new_for_fragment_tree(self, scroll_offsets, pipeline_id);
+
         self.find_v2(
-            pipeline_id,
-            scroll_offsets,
-            |fragment, _, containing_block| {
+            &mut find_manager,
+            |fragment, find_manager| {
                 if fragment.tag() != Some(tag_to_find) {
-                    return None::<()>;
+                    return None;
                 }
+                let containing_block = find_manager.get_payload(fragment);
 
                 let fragment_relative_rect = match fragment {
                     Fragment::Box(fragment) | Fragment::Float(fragment) => {
@@ -201,7 +186,7 @@ impl FragmentTree {
                 );
 
                 content_boxes.push(rect.to_untyped());
-                None::<()>
+                None
             },
         );
         content_boxes

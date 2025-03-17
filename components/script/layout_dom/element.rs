@@ -254,7 +254,7 @@ impl<'dom> style::dom::TElement for ServoLayoutElement<'dom> {
         let node = self.as_node();
         let document = node.owner_doc();
 
-        context.animations.get_ongoing_transition_declarations(
+        context.animations.get_transition_declarations(
             &AnimationSetKey::new_for_non_pseudo(node.opaque()),
             context.current_time_for_animations,
             document.style_shared_lock(),

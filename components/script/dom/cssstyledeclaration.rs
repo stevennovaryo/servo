@@ -88,7 +88,7 @@ impl CSSStyleOwner {
 
                     result
                 };
-                dbg!(changed);
+                // dbg!(changed);
 
                 if changed {
                     // Note that there's no need to remove the attribute here if
@@ -288,7 +288,7 @@ impl CSSStyleDeclaration {
         priority: DOMString,
         can_gc: CanGc,
     ) -> ErrorResult {
-        dbg!(&id.to_css_string(), &value, &priority);
+        // dbg!(&id.to_css_string(), &value, &priority);
 
         // Step 1
         if self.readonly {

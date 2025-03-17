@@ -2,26 +2,23 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use std::collections::HashMap;
-use std::hash::RandomState;
+use std::cell::Ref;
 use std::sync::Arc;
 
 use app_units::Au;
+use atomic_refcell::AtomicRef;
 use base::id::PipelineId;
 use base::print_tree::PrintTree;
-use euclid::Vector2D;
 use fonts::{FontMetrics, GlyphStore};
 use script_layout_interface::{FragmentType, combine_id_with_fragment_type};
 use servo_arc::Arc as ServoArc;
 use style::Zero;
 use style::properties::ComputedValues;
 use style::values::specified::text::TextDecorationLine;
-use webrender_api::units::LayoutPixel;
 use webrender_api::{ExternalScrollId, FontInstanceKey, ImageKey};
 
 use super::{
-    BaseFragment, BoxFragment, ContainingBlockManager, ContainingBlockQueryInfo,
-    HoistedSharedFragment, PositioningFragment, Tag,
+    BaseFragment, BoxFragment, ContainingBlockManager, FragmentTreeQueryContext, FragmentTreeQueryManager, HoistedSharedFragment, PositioningFragment, Tag
 };
 use crate::cell::ArcRefCell;
 use crate::geom::{LogicalSides, PhysicalRect, PhysicalVec};
@@ -161,6 +158,22 @@ impl Fragment {
         }
     }
 
+    pub(crate) fn children(&self) -> Option<AtomicRef<Vec<Fragment>>> {
+        match self {
+            Fragment::Box(fragment) | Fragment::Float(fragment) => {
+                Some(AtomicRef::map(fragment.borrow(), |fragment| {
+                    &fragment.children
+                }))
+            },
+            Fragment::Positioning(fragment) => {
+                Some(AtomicRef::map(fragment.borrow(), |fragment| {
+                    &fragment.children
+                }))
+            },
+            _ => None,
+        }
+    }
+
     pub(crate) fn find<T>(
         &self,
         manager: &ContainingBlockManager<PhysicalRect<Au>>,
@@ -217,101 +230,22 @@ impl Fragment {
     // implementing a find element architecture that support mapping of coordinate space.
     pub(crate) fn find_v2<T>(
         &self,
-        pipeline_id: PipelineId, // We could probably incorporate this inside fragment tree
-        scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
-        manager: &ContainingBlockManager<ContainingBlockQueryInfo>,
-        level: usize,
-        process_func: &mut impl FnMut(&Fragment, usize, &ContainingBlockQueryInfo) -> Option<T>,
+        find_manager: &mut impl FragmentTreeQueryManager<T>,
+        process_func: &mut impl FnMut(&Fragment, &dyn FragmentTreeQueryManager<T>) -> Option<T>,
     ) -> Option<T> {
-        let containing_block = manager.get_containing_block_for_fragment(self);
-        if let Some(result) = process_func(self, level, containing_block) {
+        if let Some(result) = process_func(self, find_manager) {
             return Some(result);
         }
 
-        match self {
-            Fragment::Box(fragment) | Fragment::Float(fragment) => {
-                let fragment = fragment.borrow();
+        let result = self.children().and_then(|children| {
+            children.iter().find_map(|child| {
+                find_manager.before_entering_node(self, child);
+                child.find_v2(find_manager, process_func)
+            })
+        });
 
-                // We should consider After and Before Fragment as well
-                let scroll_id = fragment.base.tag.map(|tag| {
-                    ExternalScrollId(
-                        combine_id_with_fragment_type(tag.node.id(), FragmentType::FragmentBody),
-                        pipeline_id.into(),
-                    )
-                });
-                let scroll_offset = scroll_id
-                    .and_then(|id| scroll_offsets.get(&id))
-                    .map(|offset| {
-                        PhysicalVec::new(Au::from_f32_px(offset.x), Au::from_f32_px(offset.y))
-                    })
-                    .unwrap_or_default();
-
-                let content_rect_info = containing_block
-                    .new_relative_transformed_child(fragment.content_rect, scroll_offset);
-                let padding_rect_info = containing_block
-                    .new_relative_transformed_child(fragment.padding_rect(), scroll_offset);
-
-                let new_manager = if fragment
-                    .style
-                    .establishes_containing_block_for_all_descendants(fragment.base.flags)
-                {
-                    manager.new_for_absolute_and_fixed_descendants(
-                        &content_rect_info,
-                        &padding_rect_info,
-                    )
-                } else if fragment
-                    .style
-                    .establishes_containing_block_for_absolute_descendants(fragment.base.flags)
-                {
-                    manager.new_for_absolute_descendants(&content_rect_info, &padding_rect_info)
-                } else {
-                    manager.new_for_non_absolute_descendants(&content_rect_info)
-                };
-
-                fragment.children.iter().find_map(|child| {
-                    child.find_v2(
-                        pipeline_id,
-                        scroll_offsets,
-                        &new_manager,
-                        level + 1,
-                        process_func,
-                    )
-                })
-            },
-            Fragment::Positioning(fragment) => {
-                let fragment = fragment.borrow();
-
-                // We should consider After and Before Fragment as well
-                let scroll_id = fragment.base.tag.map(|tag| {
-                    ExternalScrollId(
-                        combine_id_with_fragment_type(tag.node.id(), FragmentType::FragmentBody),
-                        pipeline_id.into(),
-                    )
-                });
-                let scroll_offset = scroll_id
-                    .and_then(|id| scroll_offsets.get(&id))
-                    .map(|offset| {
-                        PhysicalVec::new(Au::from_f32_px(offset.x), Au::from_f32_px(offset.y))
-                    })
-                    .unwrap_or_default();
-
-                let content_rect_info =
-                    containing_block.new_relative_transformed_child(fragment.rect, scroll_offset);
-
-                let new_manager = manager.new_for_non_absolute_descendants(&content_rect_info);
-
-                fragment.children.iter().find_map(|child| {
-                    child.find_v2(
-                        pipeline_id,
-                        scroll_offsets,
-                        &new_manager,
-                        level + 1,
-                        process_func,
-                    )
-                })
-            },
-            _ => None,
-        }
+        find_manager.on_exiting_node(self);
+        result
     }
 }
 
