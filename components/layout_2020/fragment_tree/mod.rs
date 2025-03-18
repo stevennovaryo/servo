@@ -5,7 +5,6 @@
 mod base_fragment;
 mod box_fragment;
 mod containing_block;
-mod containing_block_ref;
 mod fragment;
 #[allow(clippy::module_inception)]
 mod fragment_tree;
@@ -16,7 +15,6 @@ mod query;
 pub(crate) use base_fragment::*;
 pub(crate) use box_fragment::*;
 pub(crate) use containing_block::*;
-pub(crate) use containing_block_ref::*;
 pub(crate) use fragment::*;
 pub use fragment_tree::*;
 pub(crate) use hoisted_shared_fragment::*;

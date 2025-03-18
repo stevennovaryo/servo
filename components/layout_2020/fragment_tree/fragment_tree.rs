@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 use std::hash::RandomState;
+use std::rc::Rc;
 
 use app_units::Au;
 use base::id::PipelineId;
@@ -19,8 +20,8 @@ use webrender_api::{ExternalScrollId, units};
 use webrender_traits::display_list::AxesScrollSensitivity;
 
 use super::{
-    ContainingBlockManager, Fragment, FragmentTreeQueryContext,
-    FragmentTreeQueryManager, Tag,
+    ContainingBlockInfoContext, ContainingBlockInfoData, ContainingBlockManager,
+    ContainingBlockQueryInfo, Fragment, FragmentTreeQueryContext, Tag,
 };
 use crate::display_list::StackingContext;
 use crate::flow::CanvasBackground;
@@ -104,14 +105,17 @@ impl FragmentTree {
         });
     }
 
-    pub(crate) fn find_v2<T>(
+    pub(crate) fn find_v2(
         &self,
-        find_manager: &mut impl FragmentTreeQueryManager<T>,
-        mut process_func: impl FnMut(&Fragment, &dyn FragmentTreeQueryManager<T>) -> Option<T>,
-    ) -> Option<T> {
+        find_manager: &ContainingBlockInfoContext,
+        process_func: &mut impl FnMut(
+            &Fragment,
+            &ContainingBlockInfoContext,
+        ) -> Option<ContainingBlockQueryInfo>,
+    ) -> Option<ContainingBlockQueryInfo> {
         self.root_fragments
             .iter()
-            .find_map(|child| child.find_v2(find_manager, &mut process_func))
+            .find_map(|child| child.find_v2(find_manager, process_func))
     }
 
     /// Get the vector of rectangles that surrounds the fragments of the node with the given address.
@@ -160,35 +164,42 @@ impl FragmentTree {
         let mut content_boxes = Vec::new();
         let tag_to_find = Tag::new(requested_node);
 
-        let mut find_manager = FragmentTreeQueryContext::new_for_fragment_tree(self, scroll_offsets, pipeline_id);
+        let context_additional_data = ContainingBlockInfoData {
+            scroll_offsets,
+            pipeline_id,
+        };
 
-        self.find_v2(
-            &mut find_manager,
-            |fragment, find_manager| {
-                if fragment.tag() != Some(tag_to_find) {
-                    return None;
-                }
-                let containing_block = find_manager.get_payload(fragment);
+        FragmentTreeQueryContext::for_fragment_tree_and_then(
+            self,
+            context_additional_data,
+            |find_context| {
+                self.find_v2(find_context, &mut |fragment, find_context| {
+                    if fragment.tag() != Some(tag_to_find) {
+                        return None;
+                    }
+                    let containing_block = find_context.get_payload(fragment);
 
-                let fragment_relative_rect = match fragment {
-                    Fragment::Box(fragment) | Fragment::Float(fragment) => {
-                        fragment.borrow().border_rect()
-                    },
-                    Fragment::Positioning(fragment) => fragment.borrow().rect,
-                    Fragment::Text(fragment) => fragment.borrow().rect,
-                    Fragment::AbsoluteOrFixedPositioned(_) |
-                    Fragment::Image(_) |
-                    Fragment::IFrame(_) => return None,
-                };
+                    let fragment_relative_rect = match fragment {
+                        Fragment::Box(fragment) | Fragment::Float(fragment) => {
+                            fragment.borrow().border_rect()
+                        },
+                        Fragment::Positioning(fragment) => fragment.borrow().rect,
+                        Fragment::Text(fragment) => fragment.borrow().rect,
+                        Fragment::AbsoluteOrFixedPositioned(_) |
+                        Fragment::Image(_) |
+                        Fragment::IFrame(_) => return None,
+                    };
 
-                let rect = fragment_relative_rect.translate(
-                    containing_block.rect.origin.to_vector() + containing_block.scroll_offset,
-                );
+                    let rect = fragment_relative_rect.translate(
+                        containing_block.rect.origin.to_vector() + containing_block.scroll_offset,
+                    );
 
-                content_boxes.push(rect.to_untyped());
-                None
+                    content_boxes.push(rect.to_untyped());
+                    None
+                })
             },
         );
+
         content_boxes
     }
 

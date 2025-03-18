@@ -2,7 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use std::cell::Ref;
 use std::sync::Arc;
 
 use app_units::Au;
@@ -10,18 +9,18 @@ use atomic_refcell::AtomicRef;
 use base::id::PipelineId;
 use base::print_tree::PrintTree;
 use fonts::{FontMetrics, GlyphStore};
-use script_layout_interface::{FragmentType, combine_id_with_fragment_type};
 use servo_arc::Arc as ServoArc;
 use style::Zero;
 use style::properties::ComputedValues;
 use style::values::specified::text::TextDecorationLine;
-use webrender_api::{ExternalScrollId, FontInstanceKey, ImageKey};
+use webrender_api::{FontInstanceKey, ImageKey};
 
 use super::{
-    BaseFragment, BoxFragment, ContainingBlockManager, FragmentTreeQueryContext, FragmentTreeQueryManager, HoistedSharedFragment, PositioningFragment, Tag
+    BaseFragment, BoxFragment, ContainingBlockInfoContext, ContainingBlockManager,
+    ContainingBlockQueryInfo, HoistedSharedFragment, PositioningFragment, Tag,
 };
 use crate::cell::ArcRefCell;
-use crate::geom::{LogicalSides, PhysicalRect, PhysicalVec};
+use crate::geom::{LogicalSides, PhysicalRect};
 use crate::style_ext::ComputedValuesExt;
 
 #[derive(Clone)]
@@ -228,24 +227,27 @@ impl Fragment {
 
     // Child find but we are considering scrollOffset. This will be the first step of
     // implementing a find element architecture that support mapping of coordinate space.
-    pub(crate) fn find_v2<T>(
+    pub(crate) fn find_v2(
         &self,
-        find_manager: &mut impl FragmentTreeQueryManager<T>,
-        process_func: &mut impl FnMut(&Fragment, &dyn FragmentTreeQueryManager<T>) -> Option<T>,
-    ) -> Option<T> {
+        find_manager: &ContainingBlockInfoContext,
+        process_func: &mut impl FnMut(
+            &Fragment,
+            &ContainingBlockInfoContext,
+        ) -> Option<ContainingBlockQueryInfo>,
+    ) -> Option<ContainingBlockQueryInfo> {
         if let Some(result) = process_func(self, find_manager) {
             return Some(result);
         }
 
-        let result = self.children().and_then(|children| {
-            children.iter().find_map(|child| {
-                find_manager.before_entering_node(self, child);
-                child.find_v2(find_manager, process_func)
+        find_manager.precompute_state_and_then(self, |new_context| {
+            self.children().and_then(|children| {
+                children
+                    .iter()
+                    .find_map(|child| child.find_v2(new_context, process_func))
             })
         });
 
-        find_manager.on_exiting_node(self);
-        result
+        None
     }
 }
 

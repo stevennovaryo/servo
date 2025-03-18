@@ -2,11 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-use app_units::Au;
 use style::computed_values::position::T as ComputedPosition;
 
 use crate::fragment_tree::Fragment;
-use crate::geom::{PhysicalRect, PhysicalVec};
 
 /// A data structure used to track the containing block when recursing
 /// through the Fragment tree. It tracks the three types of containing
