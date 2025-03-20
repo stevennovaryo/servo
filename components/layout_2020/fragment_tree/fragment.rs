@@ -16,8 +16,7 @@ use style::values::specified::text::TextDecorationLine;
 use webrender_api::{FontInstanceKey, ImageKey};
 
 use super::{
-    BaseFragment, BoxFragment, ContainingBlockInfoContext, ContainingBlockManager,
-    ContainingBlockQueryInfo, HoistedSharedFragment, PositioningFragment, Tag,
+    BaseFragment, BoxFragment, ContainingBlockInfoContext, ContainingBlockManager, ContainingBlockQueryInfo, FragmentTreeQueryContextTrait, HoistedSharedFragment, PositioningFragment, Tag
 };
 use crate::cell::ArcRefCell;
 use crate::geom::{LogicalSides, PhysicalRect};
@@ -227,14 +226,14 @@ impl Fragment {
 
     // Child find but we are considering scrollOffset. This will be the first step of
     // implementing a find element architecture that support mapping of coordinate space.
-    pub(crate) fn find_v2(
+    pub(crate) fn find_v2<'a, T, D: Clone, C: FragmentTreeQueryContextTrait<'a, T, D>>(
         &self,
-        find_context: &ContainingBlockInfoContext,
+        find_context: &C,
         process_func: &mut impl FnMut(
             &Fragment,
-            &ContainingBlockInfoContext,
-        ) -> Option<ContainingBlockQueryInfo>,
-    ) -> Option<ContainingBlockQueryInfo> {
+            &C,
+        ) -> Option<T>,
+    ) -> Option<T> {
         if let Some(result) = process_func(self, find_context) {
             return Some(result);
         }

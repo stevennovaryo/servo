@@ -12,6 +12,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::process;
+use std::rc::Rc;
 use std::sync::{Arc, LazyLock};
 
 use app_units::Au;
@@ -150,7 +151,7 @@ pub struct LayoutThread {
     viewport_size: UntypedSize2D<Au>,
 
     /// Scroll offsets of nodes that scroll.
-    scroll_offsets: RefCell<HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>>>,
+    scroll_offsets: Rc<RefCell<HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>>>>,
 
     webrender_image_cache: Arc<RwLock<FnvHashMap<(ServoUrl, UsePlaceholder), WebRenderImageInfo>>>,
 
@@ -205,7 +206,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn add_stylesheet(
         &mut self,
@@ -228,7 +229,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn remove_stylesheet(&mut self, stylesheet: ServoArc<Stylesheet>) {
         let guard = stylesheet.shared_lock.read();
@@ -240,7 +241,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn query_content_box(&self, node: OpaqueNode) -> Option<UntypedRect<Au>> {
         process_content_box_request(
@@ -253,7 +254,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn query_content_boxes(&self, node: OpaqueNode) -> Vec<UntypedRect<Au>> {
         process_content_boxes_request(
@@ -266,7 +267,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn query_client_rect(&self, node: OpaqueNode) -> UntypedRect<i32> {
         process_node_geometry_request(node, self.fragment_tree.borrow().clone())
@@ -274,7 +275,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn query_element_inner_outer_text(
         &self,
@@ -286,7 +287,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn query_nodes_from_point(
         &self,
@@ -312,7 +313,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn query_offset_parent(&self, node: OpaqueNode) -> OffsetParentResponse {
         process_offset_parent_query(node, self.fragment_tree.borrow().clone())
@@ -320,7 +321,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn query_resolved_style(
         &self,
@@ -359,7 +360,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn query_resolved_font_style(
         &self,
@@ -395,7 +396,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn query_scrolling_area(&self, node: Option<OpaqueNode>) -> UntypedRect<i32> {
         process_node_scroll_area_request(node, self.fragment_tree.borrow().clone())
@@ -403,7 +404,7 @@ impl Layout for LayoutThread {
 
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn query_text_indext(
         &self,
@@ -619,7 +620,7 @@ impl LayoutThread {
     /// The high-level routine that performs layout.
     #[cfg_attr(
         feature = "tracing",
-        tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
+        // tracing::instrument(skip_all, fields(servo_profiling = true), level = "trace")
     )]
     fn handle_reflow(&mut self, mut reflow_request: ReflowRequest) -> Option<ReflowResult> {
         let document = unsafe { ServoLayoutNode::new(&reflow_request.document) };

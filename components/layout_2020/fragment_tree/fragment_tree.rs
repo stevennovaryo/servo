@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 use std::hash::RandomState;
+use std::rc::Rc;
 
 use app_units::Au;
 use base::id::PipelineId;
@@ -18,8 +19,7 @@ use webrender_api::{ExternalScrollId, units};
 use webrender_traits::display_list::AxesScrollSensitivity;
 
 use super::{
-    ContainingBlockInfoContext, ContainingBlockInfoData, ContainingBlockManager,
-    ContainingBlockQueryInfo, Fragment, FragmentTreeQueryContext, Tag,
+    ContainingBlockInfoContext, ContainingBlockInfoData, ContainingBlockManager, ContainingBlockQueryInfo, Fragment, FragmentTreeQueryContext, FragmentTreeQueryContextTrait, Tag
 };
 use crate::display_list::StackingContext;
 use crate::flow::CanvasBackground;
@@ -101,14 +101,14 @@ impl FragmentTree {
         });
     }
 
-    pub(crate) fn find_v2(
+    pub(crate) fn find_v2<'a, T, D: Clone, C: FragmentTreeQueryContextTrait<'a, T, D>>(
         &self,
-        find_context: &ContainingBlockInfoContext,
+        find_context: &C,
         process_func: &mut impl FnMut(
             &Fragment,
-            &ContainingBlockInfoContext,
-        ) -> Option<ContainingBlockQueryInfo>,
-    ) -> Option<ContainingBlockQueryInfo> {
+            &C,
+        ) -> Option<T>,
+    ) -> Option<T> {
         self.root_fragments
             .iter()
             .find_map(|child| child.find_v2(find_context, process_func))
@@ -124,7 +124,7 @@ impl FragmentTree {
         &self,
         requested_node: OpaqueNode,
         pipeline_id: PipelineId,
-        scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
+        scroll_offsets: Rc<HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>>,
     ) -> Vec<Rect<Au>> {
         let mut content_boxes = Vec::new();
         let tag_to_find = Tag::new(requested_node);

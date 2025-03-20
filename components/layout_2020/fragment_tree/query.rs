@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 use std::hash::RandomState;
+use std::rc::Rc;
 
 use app_units::Au;
 use base::id::PipelineId;
@@ -15,8 +16,28 @@ use super::{ContainingBlockManager, Fragment, FragmentTree};
 use crate::geom::{PhysicalRect, PhysicalVec};
 use crate::style_ext::ComputedValuesExt;
 
+pub trait FragmentTreeQueryContextTrait<'a, T, D: Clone> {
+    fn for_fragment_tree_and_then<
+        P: FnMut(&FragmentTreeQueryContext<'_, T, D>) -> Option<T>,
+    >(
+        fragment_tree: &FragmentTree,
+        additional_data: D,
+        predicate: P,
+    ) -> Option<T>;
+
+    fn precompute_state_and_then<
+        P: FnMut(&FragmentTreeQueryContext<'_, T, D>) -> Option<T>,
+    >(
+        &'a self,
+        parent: &Fragment,
+        predicate: P,
+    ) -> Option<T>;
+
+    fn get_payload(&self, fragment: &Fragment) -> &T;
+}
+
 /// Informations that could be stored and mutated between iteration of [Fragment::find_v2]
-pub struct FragmentTreeQueryContext<'a, T, D: 'a + Clone> {
+pub struct FragmentTreeQueryContext<'a, T, D: Clone> {
     manager: ContainingBlockManager<'a, T>,
     level: usize,
     additional_data: D,
@@ -26,18 +47,17 @@ pub struct FragmentTreeQueryContext<'a, T, D: 'a + Clone> {
 /// we would store scroll offsets from LayoutThread for computation as well.
 ///
 /// FIXME: Ideally, we should consider the Webrender display list.
-pub struct ContainingBlockInfoData<'a> {
+pub struct ContainingBlockInfoData {
     /// Reference to scroll offsets from LayoutThread
-    pub(crate) scroll_offsets:
-        &'a HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
+    pub(crate) scroll_offsets: Rc<HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>>,
     /// Pipeline information from LayoutThread
     pub(crate) pipeline_id: PipelineId,
 }
 
-impl Clone for ContainingBlockInfoData<'_> {
+impl Clone for ContainingBlockInfoData {
     fn clone(&self) -> Self {
         Self {
-            scroll_offsets: self.scroll_offsets,
+            scroll_offsets: Rc::clone(&self.scroll_offsets),
             pipeline_id: self.pipeline_id,
         }
     }
@@ -54,13 +74,13 @@ impl<'a, T, D: Clone> FragmentTreeQueryContext<'a, T, D> {
 }
 
 pub type ContainingBlockInfoContext<'a> =
-    FragmentTreeQueryContext<'a, ContainingBlockQueryInfo, ContainingBlockInfoData<'a>>;
+    FragmentTreeQueryContext<'a, ContainingBlockQueryInfo, ContainingBlockInfoData>;
 
-impl ContainingBlockInfoContext<'_> {
+impl<'a> FragmentTreeQueryContextTrait<'a, ContainingBlockQueryInfo, ContainingBlockInfoData> for ContainingBlockInfoContext<'_> {
     /// Create an [FragmentTreeQueryContext] context and run the predicate with it as the argument.
     /// We run it inside the predicate to maintain the [ContainingBlockManager]'s borrow structure.
-    pub(crate) fn for_fragment_tree_and_then<
-        P: FnMut(&ContainingBlockInfoContext<'_>) -> Option<ContainingBlockQueryInfo>,
+    fn for_fragment_tree_and_then<
+        P: FnMut(&FragmentTreeQueryContext<'_, ContainingBlockQueryInfo, ContainingBlockInfoData>) -> Option<ContainingBlockQueryInfo>,
     >(
         fragment_tree: &FragmentTree,
         additional_data: ContainingBlockInfoData,
@@ -98,10 +118,10 @@ impl ContainingBlockInfoContext<'_> {
 
     /// Create/mutate [FragmentTreeQueryContext] context and run the predicate with it as the argument.
     /// We run it inside the predicate to maintain the [ContainingBlockManager]'s borrow structure.
-    pub(crate) fn precompute_state_and_then<
-        P: FnMut(&ContainingBlockInfoContext<'_>) -> Option<ContainingBlockQueryInfo>,
+    fn precompute_state_and_then<
+        P: FnMut(&FragmentTreeQueryContext<'_, ContainingBlockQueryInfo, ContainingBlockInfoData>) -> Option<ContainingBlockQueryInfo>,
     >(
-        &self,
+        &'a self,
         parent: &Fragment,
         mut predicate: P,
     ) -> Option<ContainingBlockQueryInfo> {
@@ -178,7 +198,7 @@ impl ContainingBlockInfoContext<'_> {
         }
     }
 
-    pub(crate) fn get_payload(&self, fragment: &Fragment) -> &ContainingBlockQueryInfo {
+    fn get_payload(&self, fragment: &Fragment) -> &ContainingBlockQueryInfo {
         self.manager.get_containing_block_for_fragment(fragment)
     }
 }

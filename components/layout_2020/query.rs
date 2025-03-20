@@ -5,6 +5,7 @@
 //! Utilities for querying the layout, as needed by layout.
 use std::collections::HashMap;
 use std::hash::RandomState;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use app_units::Au;
@@ -54,7 +55,7 @@ pub fn process_content_box_request(
     requested_node: OpaqueNode,
     fragment_tree: Option<Arc<FragmentTree>>,
     pipeline_id: PipelineId,
-    scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
+    scroll_offsets: Rc<HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>>,
 ) -> Option<Rect<Au>> {
     let rects =
         fragment_tree?.get_content_boxes_for_node(requested_node, pipeline_id, scroll_offsets);
@@ -73,7 +74,7 @@ pub fn process_content_boxes_request(
     requested_node: OpaqueNode,
     fragment_tree: Option<Arc<FragmentTree>>,
     pipeline_id: PipelineId,
-    scroll_offsets: &HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>,
+    scroll_offsets: Rc<HashMap<ExternalScrollId, Vector2D<f32, LayoutPixel>, RandomState>>,
 ) -> Vec<Rect<Au>> {
     fragment_tree
         .map(|tree| tree.get_content_boxes_for_node(requested_node, pipeline_id, scroll_offsets))
@@ -1159,4 +1160,16 @@ where
         resolve_for_declarations::<E>(context, Some(&*parent_style), declarations, shared_lock);
 
     Some(computed_values.clone_font())
+}
+
+pub fn process_is_node_descendant_of_other_node_request(
+    node: OpaqueNode,
+    other_node: OpaqueNode,
+    fragment_tree: Option<Arc<FragmentTree>>,
+) -> bool {
+    if let Some(fragment_tree) = fragment_tree {
+        fragment_tree.is_node_descendant_of_other_node(node, other_node)
+    } else {
+        false
+    }
 }
