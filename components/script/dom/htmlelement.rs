@@ -11,6 +11,7 @@ use html5ever::{LocalName, Prefix, local_name, ns};
 use js::rust::HandleObject;
 use script_layout_interface::QueryMsg;
 use style::attr::AttrValue;
+use style::selector_parser::PseudoElement;
 use stylo_dom::ElementState;
 
 use super::customelementregistry::CustomElementState;
@@ -133,6 +134,19 @@ impl HTMLElement {
             .query_element_inner_outer_text(node.to_trusted_node_address());
 
         DOMString::from(text)
+    }
+
+    pub(crate) fn init_style_for_pseudo_element(&self, pseudo_element: PseudoElement, can_gc: CanGc) {
+        let global = self.owner_window();
+        let style_decl = CSSStyleDeclaration::new(
+            &global,
+            CSSStyleOwner::Element(Dom::from_ref(self.upcast())),
+            Some(pseudo_element),
+            CSSModificationAccess::ReadWrite,
+            can_gc,
+        ).as_traced();
+
+        self.style_decl.set(Some(&*style_decl));
     }
 }
 

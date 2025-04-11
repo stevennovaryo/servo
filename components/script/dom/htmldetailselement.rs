@@ -130,8 +130,10 @@ impl HTMLDetailsElement {
             .upcast::<Node>()
             .AppendChild(fallback_summary.upcast::<Node>(), can_gc)
             .unwrap();
+        summary.upcast::<Node>().set_pseudo_element(style::selector_parser::PseudoElement::DetailsSummary);
 
         let descendants = HTMLSlotElement::new(local_name!("slot"), None, &document, None, can_gc);
+        // descendants.upcast::<Node>().set_pseudo_element(style::selector_parser::PseudoElement::DetailsContent);
         root.upcast::<Node>()
             .AppendChild(descendants.upcast::<Node>(), can_gc)
             .unwrap();

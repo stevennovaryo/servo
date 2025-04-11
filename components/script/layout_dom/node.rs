@@ -237,7 +237,7 @@ pub struct ServoThreadSafeLayoutNode<'dom> {
 impl<'dom> ServoThreadSafeLayoutNode<'dom> {
     /// Creates a new `ServoThreadSafeLayoutNode` from the given `ServoLayoutNode`.
     pub fn new(node: ServoLayoutNode<'dom>) -> Self {
-        ServoThreadSafeLayoutNode { node, pseudo: None }
+        ServoThreadSafeLayoutNode { node, pseudo: node.node.pseudo_element() }
     }
 
     /// Returns the interior of this node as a `LayoutDom`. This is highly unsafe for layout to
