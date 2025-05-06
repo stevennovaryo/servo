@@ -66,6 +66,7 @@ pub fn sandbox_access_files_dirs() -> Vec<PathBuf> {
         .unwrap_or_default()
 }
 
+#[derive(Clone)]
 pub enum Resource {
     /// A list of GATT services that are blocked from being used by web bluetooth.
     /// The format of the file is a list of UUIDs, one per line, with an optional second word to specify the
@@ -100,6 +101,9 @@ pub enum Resource {
     /// A CSS file to style the presentational hints.
     /// It can be empty but then presentational hints will not be styled.
     PresentationalHintsCSS,
+    /// A CSS file to style the elements inside <details> element UA Shadow Tree.
+    /// It can be empty but then <details> element simply wouldn't work.
+    DetailsCSS,
     /// A CSS file to style the quirks mode.
     /// It can be empty but then quirks mode will not be styled.
     QuirksModeCSS,
@@ -140,6 +144,7 @@ impl Resource {
             Resource::UserAgentCSS => "user-agent.css",
             Resource::ServoCSS => "servo.css",
             Resource::PresentationalHintsCSS => "presentational-hints.css",
+            Resource::DetailsCSS => "details.css",
             Resource::QuirksModeCSS => "quirks-mode.css",
             Resource::RippyPNG => "rippy.png",
             Resource::MediaControlsCSS => "media-controls.css",
@@ -188,6 +193,7 @@ fn resources_for_tests() -> Box<dyn ResourceReaderMethods + Sync + Send> {
                 Resource::PresentationalHintsCSS => {
                     &include_bytes!("../../../resources/presentational-hints.css")[..]
                 },
+                Resource::DetailsCSS => &include_bytes!("../../../resources/details.css")[..],
                 Resource::QuirksModeCSS => {
                     &include_bytes!("../../../resources/quirks-mode.css")[..]
                 },

@@ -1,0 +1,21 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+/* These rule would not comply with ::details-content and should be removed
+  with it's implementation */
+slot:not([name]) {
+  display: none;
+}
+:host([open]) slot:not([name]) {
+  display: block;
+}
+
+summary[name=internal-fallback-summary] {
+  display: list-item;
+  counter-increment: list-item 0;
+  list-style: disclosure-closed inside;
+}
+:host([open]) summary[name=internal-fallback-summary] {
+  list-style-type: disclosure-open;
+}

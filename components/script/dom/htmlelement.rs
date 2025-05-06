@@ -136,18 +136,18 @@ impl HTMLElement {
         DOMString::from(text)
     }
 
-    pub(crate) fn init_style_for_pseudo_element(&self, pseudo_element: PseudoElement, can_gc: CanGc) {
-        let global = self.owner_window();
-        let style_decl = CSSStyleDeclaration::new(
-            &global,
-            CSSStyleOwner::Element(Dom::from_ref(self.upcast())),
-            Some(pseudo_element),
-            CSSModificationAccess::ReadWrite,
-            can_gc,
-        ).as_traced();
+    // pub(crate) fn init_style_for_pseudo_element(&self, pseudo_element: PseudoElement, can_gc: CanGc) {
+    //     let global = self.owner_window();
+    //     let style_decl = CSSStyleDeclaration::new(
+    //         &global,
+    //         CSSStyleOwner::Element(Dom::from_ref(self.upcast())),
+    //         Some(pseudo_element),
+    //         CSSModificationAccess::ReadWrite,
+    //         can_gc,
+    //     ).as_traced();
 
-        self.style_decl.set(Some(&*style_decl));
-    }
+    //     self.style_decl.set(Some(&*style_decl));
+    // }
 }
 
 impl HTMLElementMethods<crate::DomTypeHolder> for HTMLElement {

@@ -16,7 +16,7 @@ use base::Epoch;
 use base::id::{PipelineId, WebViewId};
 use compositing_traits::CrossProcessCompositorApi;
 use constellation_traits::ScrollState;
-use embedder_traits::resources::{self, Resource};
+use embedder_traits::resources::Resource;
 use embedder_traits::{UntrustedNodeAddress, ViewportDetails};
 use euclid::default::{Point2D as UntypedPoint2D, Rect as UntypedRect, Size2D as UntypedSize2D};
 use euclid::{Point2D, Scale, Size2D, Vector2D};
@@ -37,8 +37,7 @@ use profile_traits::{path, time_profile};
 use rayon::ThreadPool;
 use script::layout_dom::{ServoLayoutDocument, ServoLayoutElement, ServoLayoutNode};
 use script_layout_interface::{
-    Layout, LayoutConfig, LayoutFactory, NodesFromPointQueryType, OffsetParentResponse, ReflowGoal,
-    ReflowRequest, ReflowResult, TrustedNodeAddress,
+    parse_resource_document_stylesheet_as_origin, Layout, LayoutConfig, LayoutFactory, NodesFromPointQueryType, OffsetParentResponse, ReflowGoal, ReflowRequest, ReflowResult, TrustedNodeAddress
 };
 use script_traits::{DrawAPaintImageResult, PaintWorkletError, Painter, ScriptThreadMessage};
 use servo_arc::Arc as ServoArc;
@@ -60,7 +59,7 @@ use style::properties::{ComputedValues, PropertyId};
 use style::queries::values::PrefersColorScheme;
 use style::selector_parser::{PseudoElement, SnapshotMap};
 use style::servo::media_queries::FontMetricsProvider;
-use style::shared_lock::{SharedRwLock, SharedRwLockReadGuard, StylesheetGuards};
+use style::shared_lock::{SharedRwLockReadGuard, StylesheetGuards};
 use style::stylesheets::{
     DocumentStyleSheet, Origin, Stylesheet, StylesheetInDocument, UrlExtraData,
     UserAgentStylesheets,
@@ -74,7 +73,6 @@ use style::values::specified::font::KeywordInfo;
 use style::{Zero, driver};
 use style_traits::{CSSPixel, SpeculativePainter};
 use stylo_atoms::Atom;
-use url::Url;
 use webrender_api::units::{DevicePixel, DevicePoint, LayoutPixel, LayoutPoint, LayoutSize};
 use webrender_api::{ExternalScrollId, HitTestFlags};
 
@@ -956,47 +954,25 @@ impl LayoutThread {
 }
 
 fn get_ua_stylesheets() -> Result<UserAgentStylesheets, &'static str> {
-    fn parse_ua_stylesheet(
-        shared_lock: &SharedRwLock,
-        filename: &str,
-        content: &[u8],
-    ) -> Result<DocumentStyleSheet, &'static str> {
-        let url = Url::parse(&format!("chrome://resources/{:?}", filename))
-            .ok()
-            .unwrap();
-        Ok(DocumentStyleSheet(ServoArc::new(Stylesheet::from_bytes(
-            content,
-            url.into(),
-            None,
-            None,
-            Origin::UserAgent,
-            MediaList::empty(),
-            shared_lock.clone(),
-            None,
-            None,
-            QuirksMode::NoQuirks,
-        ))))
-    }
-
     let shared_lock = &GLOBAL_STYLE_DATA.shared_lock;
 
     // FIXME: presentational-hints.css should be at author origin with zero specificity.
     //        (Does it make a difference?)
     let mut user_or_user_agent_stylesheets = vec![
-        parse_ua_stylesheet(
+        parse_resource_document_stylesheet_as_origin(
             shared_lock,
-            "user-agent.css",
-            &resources::read_bytes(Resource::UserAgentCSS),
+            Resource::UserAgentCSS,
+            Origin::UserAgent,
         )?,
-        parse_ua_stylesheet(
+        parse_resource_document_stylesheet_as_origin(
             shared_lock,
-            "servo.css",
-            &resources::read_bytes(Resource::ServoCSS),
+            Resource::ServoCSS,
+            Origin::UserAgent,
         )?,
-        parse_ua_stylesheet(
+        parse_resource_document_stylesheet_as_origin(
             shared_lock,
-            "presentational-hints.css",
-            &resources::read_bytes(Resource::PresentationalHintsCSS),
+            Resource::PresentationalHintsCSS,
+            Origin::UserAgent,
         )?,
     ];
 
@@ -1017,10 +993,10 @@ fn get_ua_stylesheets() -> Result<UserAgentStylesheets, &'static str> {
         )));
     }
 
-    let quirks_mode_stylesheet = parse_ua_stylesheet(
+    let quirks_mode_stylesheet = parse_resource_document_stylesheet_as_origin(
         shared_lock,
-        "quirks-mode.css",
-        &resources::read_bytes(Resource::QuirksModeCSS),
+        Resource::QuirksModeCSS,
+        Origin::UserAgent,
     )?;
 
     Ok(UserAgentStylesheets {
