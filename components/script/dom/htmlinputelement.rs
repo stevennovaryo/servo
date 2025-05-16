@@ -1122,6 +1122,11 @@ impl HTMLInputElement {
         text_container
             .upcast::<Element>()
             .SetId(DOMString::from("input-editing-root"), can_gc);
+        // We should probably use pseudo element to check this.
+        // Chrome is using (private?) element attrs,
+        text_container
+            .upcast::<Element>()
+            .set_text_editing_root_state(true);
         shadow_root
             .upcast::<Node>()
             .AppendChild(text_container.upcast::<Node>(), can_gc)

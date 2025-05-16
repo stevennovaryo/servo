@@ -1614,6 +1614,12 @@ pub(crate) trait LayoutNodeHelpers<'dom> {
 
     /// Whether this element is a `<input>` rendered as text or a `<textarea>`.
     fn is_text_input(&self) -> bool;
+
+    /// Whether this element is a text input with Shadow DOM.
+    fn is_text_input_with_shadow_dom(&self) -> bool;
+
+    /// Whether this element serve as a container of editable text for a text input.
+    fn text_editing_root(&self) -> bool;
     fn text_content(self) -> Cow<'dom, str>;
     fn selection(self) -> Option<Range<usize>>;
     fn image_url(self) -> Option<ServoUrl>;
@@ -1788,8 +1794,7 @@ impl<'dom> LayoutNodeHelpers<'dom> for LayoutDom<'dom, Node> {
             let input = self.unsafe_get().downcast::<HTMLInputElement>().unwrap();
 
             // FIXME: All the non-color and non-text input types currently render as text
-            input.input_type() != InputType::Color &&
-            input.input_type() != InputType::Text
+            !matches!(input.input_type(), InputType::Color | InputType::Text)
         } else {
             type_id ==
                 NodeTypeId::Element(ElementTypeId::HTMLElement(
@@ -1798,12 +1803,38 @@ impl<'dom> LayoutNodeHelpers<'dom> for LayoutDom<'dom, Node> {
         }
     }
 
+    fn is_text_input_with_shadow_dom(&self) -> bool {
+        let type_id = self.type_id_for_layout();
+        if type_id ==
+            NodeTypeId::Element(ElementTypeId::HTMLElement(
+                HTMLElementTypeId::HTMLInputElement,
+            ))
+        {
+            let input = self.unsafe_get().downcast::<HTMLInputElement>().unwrap();
+
+            matches!(input.input_type(), InputType::Color | InputType::Text)
+        } else {
+            false
+        }
+    }
+
+    fn text_editing_root(&self) -> bool {
+        match self.downcast::<Element>() {
+            Some(element) => element.text_editing_root(),
+            _ => false,
+        }
+    }
+
     fn text_content(self) -> Cow<'dom, str> {
         if let Some(text) = self.downcast::<Text>() {
             return text.upcast().data_for_layout().into();
         }
 
+
         if let Some(input) = self.downcast::<HTMLInputElement>() {
+            // // This is a temporary assert.
+            // // TODO: Remove this once all of the text input is implemented with UA shadow DOM
+            // assert!(self.is_text_input_with_shadow_dom(), "Text content should be set inside UA Shadow DOM");
             return input.value_for_layout();
         }
 
@@ -1814,6 +1845,7 @@ impl<'dom> LayoutNodeHelpers<'dom> for LayoutDom<'dom, Node> {
         panic!("not text!")
     }
 
+    // We are querying the parent up until we reach the corresponding <input> or <textarea> element.
     fn selection(self) -> Option<Range<usize>> {
         if let Some(area) = self.downcast::<HTMLTextAreaElement>() {
             return area.selection_for_layout();
@@ -1823,7 +1855,25 @@ impl<'dom> LayoutNodeHelpers<'dom> for LayoutDom<'dom, Node> {
             return input.selection_for_layout();
         }
 
-        None
+        if !self.text_editing_root() {
+            return None
+        }
+        dbg!("we are here");
+
+        let mut maybe_parent_node = self.composed_parent_node_ref();
+        while let Some(parent_node) = maybe_parent_node {
+            if let Some(area) = parent_node.downcast::<HTMLTextAreaElement>() {
+                return area.selection_for_layout();
+            }
+
+            if let Some(input) = parent_node.downcast::<HTMLInputElement>() {
+                return input.selection_for_layout();
+            }
+
+            maybe_parent_node = parent_node.composed_parent_node_ref();
+        }
+
+        panic!("Text input element not found!")
     }
 
     fn image_url(self) -> Option<ServoUrl> {
