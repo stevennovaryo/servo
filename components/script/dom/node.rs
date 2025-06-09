@@ -231,12 +231,9 @@ bitflags! {
         /// needs extra work or not
         const HAS_WEIRD_PARSER_INSERTION_MODE = 1 << 11;
 
-        /// Whether this node reside in UA shadow DOM.
-        const IS_IN_UA_WIDGET = 1 << 12;
-
         /// Whether this node serves as the text container for editable content of
         /// <input> or <textarea> element.
-        const IS_TEXT_CONTROL_INNER_EDITOR = 1 << 13;
+        const IS_TEXT_CONTROL_INNER_EDITOR = 1 << 12;
     }
 }
 
@@ -295,7 +292,6 @@ impl Node {
         let parent_is_in_a_document_tree = self.is_in_a_document_tree();
         let parent_in_shadow_tree = self.is_in_a_shadow_tree();
         let parent_is_connected = self.is_connected();
-        let parent_is_in_ua_widget = self.in_ua_widget();
 
         for node in new_child.traverse_preorder(ShadowIncluding::No) {
             if parent_in_shadow_tree {
@@ -310,7 +306,6 @@ impl Node {
             );
             node.set_flag(NodeFlags::IS_IN_SHADOW_TREE, parent_in_shadow_tree);
             node.set_flag(NodeFlags::IS_CONNECTED, parent_is_connected);
-            node.set_flag(NodeFlags::IS_IN_UA_WIDGET, parent_is_in_ua_widget);
 
             // Out-of-document elements never have the descendants flag set.
             debug_assert!(!node.get_flag(NodeFlags::HAS_DIRTY_DESCENDANTS));
@@ -714,14 +709,6 @@ impl Node {
         self.flags
             .get()
             .contains(NodeFlags::IS_TEXT_CONTROL_INNER_EDITOR)
-    }
-
-    pub(crate) fn set_in_ua_widget(&self) {
-        self.set_flag(NodeFlags::IS_IN_UA_WIDGET, true)
-    }
-
-    pub(crate) fn in_ua_widget(&self) -> bool {
-        self.flags.get().contains(NodeFlags::IS_IN_UA_WIDGET)
     }
 
     /// Returns the type ID of this node.
@@ -1677,7 +1664,6 @@ pub(crate) trait LayoutNodeHelpers<'dom> {
     fn iframe_pipeline_id(self) -> Option<PipelineId>;
     fn opaque(self) -> OpaqueNode;
     fn pseudo_element(&self) -> Option<PseudoElement>;
-    fn in_ua_widget(&self) -> bool;
 }
 
 impl<'dom> LayoutDom<'dom, Node> {
@@ -1951,15 +1937,12 @@ impl<'dom> LayoutNodeHelpers<'dom> for LayoutDom<'dom, Node> {
         unsafe { OpaqueNode(self.get_jsobject() as usize) }
     }
 
+    #[allow(unsafe_code)]
     fn pseudo_element(&self) -> Option<PseudoElement> {
         self.unsafe_get()
             .rare_data()
             .as_ref()
             .and_then(|data| data.pseudo_element)
-    }
-
-    fn in_ua_widget(&self) -> bool {
-        self.unsafe_get().in_ua_widget()
     }
 }
 
