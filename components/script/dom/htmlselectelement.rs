@@ -26,6 +26,9 @@ use crate::dom::bindings::codegen::Bindings::HTMLOptionElementBinding::HTMLOptio
 use crate::dom::bindings::codegen::Bindings::HTMLOptionsCollectionBinding::HTMLOptionsCollectionMethods;
 use crate::dom::bindings::codegen::Bindings::HTMLSelectElementBinding::HTMLSelectElementMethods;
 use crate::dom::bindings::codegen::Bindings::NodeBinding::NodeMethods;
+use crate::dom::bindings::codegen::Bindings::ShadowRootBinding::{
+    ShadowRootMode, SlotAssignmentMode,
+};
 use crate::dom::bindings::codegen::GenericBindings::CharacterDataBinding::CharacterData_Binding::CharacterDataMethods;
 use crate::dom::bindings::codegen::UnionTypes::{
     HTMLElementOrLong, HTMLOptionElementOrHTMLOptGroupElement,
@@ -49,6 +52,7 @@ use crate::dom::htmloptionelement::HTMLOptionElement;
 use crate::dom::htmloptionscollection::HTMLOptionsCollection;
 use crate::dom::node::{BindContext, ChildrenMutation, Node, NodeTraits, UnbindContext};
 use crate::dom::nodelist::NodeList;
+use crate::dom::shadowroot::IsUserAgentWidget;
 use crate::dom::text::Text;
 use crate::dom::validation::{Validatable, is_barred_by_datalist_ancestor};
 use crate::dom::validitystate::{ValidationFlags, ValidityState};

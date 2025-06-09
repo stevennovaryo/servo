@@ -57,6 +57,9 @@ use crate::dom::bindings::codegen::Bindings::MediaErrorBinding::MediaErrorConsta
 use crate::dom::bindings::codegen::Bindings::MediaErrorBinding::MediaErrorMethods;
 use crate::dom::bindings::codegen::Bindings::NavigatorBinding::Navigator_Binding::NavigatorMethods;
 use crate::dom::bindings::codegen::Bindings::NodeBinding::Node_Binding::NodeMethods;
+use crate::dom::bindings::codegen::Bindings::ShadowRootBinding::{
+    ShadowRootMode, SlotAssignmentMode,
+};
 use crate::dom::bindings::codegen::Bindings::TextTrackBinding::{TextTrackKind, TextTrackMode};
 use crate::dom::bindings::codegen::Bindings::URLBinding::URLMethods;
 use crate::dom::bindings::codegen::Bindings::WindowBinding::Window_Binding::WindowMethods;
@@ -90,6 +93,7 @@ use crate::dom::mediastream::MediaStream;
 use crate::dom::node::{Node, NodeDamage, NodeTraits, UnbindContext};
 use crate::dom::performanceresourcetiming::InitiatorType;
 use crate::dom::promise::Promise;
+use crate::dom::shadowroot::IsUserAgentWidget;
 use crate::dom::texttrack::TextTrack;
 use crate::dom::texttracklist::TextTrackList;
 use crate::dom::timeranges::{TimeRanges, TimeRangesContainer};
