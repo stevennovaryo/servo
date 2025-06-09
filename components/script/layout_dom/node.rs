@@ -244,10 +244,7 @@ pub struct ServoThreadSafeLayoutNode<'dom> {
 impl<'dom> ServoThreadSafeLayoutNode<'dom> {
     /// Creates a new `ServoThreadSafeLayoutNode` from the given `ServoLayoutNode`.
     pub fn new(node: ServoLayoutNode<'dom>) -> Self {
-        ServoThreadSafeLayoutNode {
-            node,
-            pseudo: node.node.pseudo_element(),
-        }
+        ServoThreadSafeLayoutNode { node, pseudo: None }
     }
 
     /// Returns the interior of this node as a `LayoutDom`. This is highly unsafe for layout to
@@ -443,18 +440,13 @@ pub struct ServoThreadSafeLayoutNodeChildrenIterator<'dom> {
 }
 
 impl<'dom> ServoThreadSafeLayoutNodeChildrenIterator<'dom> {
-    // MYNOTES: This seems to be unused anywhere.
     pub fn new(parent: ServoThreadSafeLayoutNode<'dom>) -> Self {
         let first_child = match parent.pseudo_element() {
             None => parent
                 .with_pseudo(PseudoElement::Before)
                 .or_else(|| parent.with_pseudo(PseudoElement::DetailsSummary))
                 .or_else(|| unsafe { parent.dangerous_first_child() }),
-            Some(PseudoElement::DetailsContent) |
-            Some(PseudoElement::DetailsSummary) |
-            Some(PseudoElement::ServoTextControlInnerContainer) |
-            Some(PseudoElement::ServoTextControlInnerEditor) |
-            Some(PseudoElement::ServoTextControlPlaceholder) => unsafe {
+            Some(PseudoElement::DetailsContent) | Some(PseudoElement::DetailsSummary) => unsafe {
                 parent.dangerous_first_child()
             },
             _ => None,
@@ -524,10 +516,7 @@ impl<'dom> Iterator for ServoThreadSafeLayoutNodeChildrenIterator<'dom> {
                         Some(PseudoElement::DetailsSummary) => {
                             self.parent_node.with_pseudo(PseudoElement::DetailsContent)
                         },
-                        Some(PseudoElement::DetailsContent) |
-                        Some(PseudoElement::ServoTextControlInnerContainer) |
-                        Some(PseudoElement::ServoTextControlInnerEditor) |
-                        Some(PseudoElement::ServoTextControlPlaceholder) => {
+                        Some(PseudoElement::DetailsContent) => {
                             self.parent_node.with_pseudo(PseudoElement::After)
                         },
                         Some(PseudoElement::After) => None,
