@@ -103,10 +103,18 @@ impl HTMLDetailsElement {
 
     fn create_shadow_tree(&self, can_gc: CanGc) {
         let document = self.owner_document();
-        // TODO(stevennovaryo): Reimplement details styling.
         let root = self
             .upcast::<Element>()
-            .attach_ua_shadow_root(false, can_gc);
+            .attach_shadow(
+                IsUserAgentWidget::Yes,
+                ShadowRootMode::Closed,
+                false,
+                false,
+                false,
+                SlotAssignmentMode::Manual,
+                can_gc,
+            )
+            .expect("Attaching UA shadow root failed");
 
         let summary = HTMLSlotElement::new(local_name!("slot"), None, &document, None, can_gc);
         root.upcast::<Node>()

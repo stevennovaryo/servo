@@ -1090,9 +1090,17 @@ impl HTMLInputElement {
     /// or create one if none exists.
     fn shadow_root(&self, can_gc: CanGc) -> DomRoot<ShadowRoot> {
         self.upcast::<Element>().shadow_root().unwrap_or_else(|| {
-            // TODO(stevennovaryo): adjust type=color's styling.
             self.upcast::<Element>()
-                .attach_ua_shadow_root(self.input_type() == InputType::Text, can_gc)
+                .attach_shadow(
+                    IsUserAgentWidget::Yes,
+                    ShadowRootMode::Closed,
+                    false,
+                    false,
+                    true,
+                    SlotAssignmentMode::Manual,
+                    can_gc,
+                )
+                .expect("Attaching UA shadow root failed")
         })
     }
 
@@ -1261,7 +1269,7 @@ impl HTMLInputElement {
                 } else {
                     value = DOMString::from("#000000");
                 }
-                let style = format!("background-color: {value} !important; z-index: 10000");
+                let style = format!("background-color: {value}");
                 color_shadow_tree
                     .color_value
                     .upcast::<Element>()
