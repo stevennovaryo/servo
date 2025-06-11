@@ -203,6 +203,21 @@ impl<'dom> style::dom::TElement for ServoLayoutElement<'dom> {
         self.as_node().traversal_parent()
     }
 
+    fn inheritance_parent(&self) -> Option<Self> {
+        if self.is_pseudo_element() {
+            // Inheritance parent of an implemented pseudo element should be the
+            // pseudo element originating element, except for element backed pseudo.
+            // But Servo are yet to implement that type of pseudo elements.
+            //
+            // FIXME: handle the cases of element backed pseudo
+            return self.pseudo_element_originating_element();
+        }
+
+        // FIXME: In default the inheritance parent would be the Self::parent_element
+        //        but probably we should use the flattened tree parent.
+        self.parent_element()
+    }
+
     fn is_html_element(&self) -> bool {
         ServoLayoutElement::is_html_element(self)
     }
