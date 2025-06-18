@@ -691,6 +691,18 @@ impl LayoutThread {
             self.set_scroll_offset_from_script(external_scroll_id, offset);
         }
 
+        if self.debug.dump_scroll_tree {
+            // Print the [ScrollTree], this is done after display list build
+            // so we have the information about webrender id.
+            if let Some(tree) = self.stacking_context_tree
+                .borrow()
+                .as_ref() {
+                tree.compositor_info.scroll_tree.debug_print();
+            } else {
+                println!("reflow {:?}: no cached scroll tree yet.", reflow_request.reflow_goal);
+            }
+        }
+
         let pending_images = std::mem::take(&mut *layout_context.pending_images.lock());
         let pending_rasterization_images =
             std::mem::take(&mut *layout_context.pending_rasterization_images.lock());
