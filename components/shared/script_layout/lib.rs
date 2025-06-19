@@ -347,14 +347,14 @@ impl ReflowGoal {
         match *self {
             ReflowGoal::UpdateTheRendering | ReflowGoal::UpdateScrollNode(..) => true,
             ReflowGoal::LayoutQuery(ref querymsg) => match *querymsg {
+                QueryMsg::ContentBox |
+                QueryMsg::ContentBoxes |
                 QueryMsg::ElementInnerOuterTextQuery |
                 QueryMsg::InnerWindowDimensionsQuery |
                 QueryMsg::NodesFromPointQuery |
                 QueryMsg::ResolvedStyleQuery |
                 QueryMsg::TextIndexQuery => true,
                 QueryMsg::ClientRectQuery |
-                QueryMsg::ContentBox |
-                QueryMsg::ContentBoxes |
                 QueryMsg::OffsetParentQuery |
                 QueryMsg::ResolvedFontStyleQuery |
                 QueryMsg::ScrollingAreaQuery |
