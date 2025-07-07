@@ -32,7 +32,7 @@ use crate::dom::bindings::str::DOMString;
 use crate::dom::cssstylesheet::CSSStyleSheet;
 use crate::dom::document::Document;
 use crate::dom::documentfragment::DocumentFragment;
-use crate::dom::documentorshadowroot::{DocumentOrShadowRoot, StyleSheetInDocument};
+use crate::dom::documentorshadowroot::{DocumentOrShadowRoot, StyleSheetInDocument, StylesheetSource};
 use crate::dom::element::Element;
 use crate::dom::htmlslotelement::HTMLSlotElement;
 use crate::dom::node::{
@@ -175,22 +175,38 @@ impl ShadowRoot {
 
         stylesheets
             .get(index)
-            .and_then(|s| s.owner.upcast::<Node>().get_cssom_stylesheet())
+            .and_then(|s|
+                s.owner.get_cssom_object()
+            )
     }
 
     /// Add a stylesheet owned by `owner` to the list of shadow root sheets, in the
     /// correct tree position.
+    // TODO(stevennovayo): parameterize to support constructed stylesheet insertion
     #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
-    pub(crate) fn add_stylesheet(&self, owner: &Element, sheet: Arc<Stylesheet>) {
+    pub(crate) fn add_stylesheet(&self, owner: StylesheetSource, sheet: Arc<Stylesheet>) {
         let stylesheets = &mut self.author_styles.borrow_mut().stylesheets;
-        let insertion_point = stylesheets
-            .iter()
-            .find(|sheet_in_shadow| {
-                owner
-                    .upcast::<Node>()
-                    .is_before(sheet_in_shadow.owner.upcast())
-            })
-            .cloned();
+
+        // TODO(stevennovayo): support ordering of constructed stylesheet
+        let insertion_point = match &owner {
+            StylesheetSource::Element(owner_elem) => {
+                stylesheets
+                    .iter()
+                    .find(|sheet_in_shadow| {
+                        match sheet_in_shadow.owner {
+                            StylesheetSource::Element(ref other_elem) => {
+                                owner_elem
+                                    .upcast::<Node>()
+                                    .is_before(other_elem.upcast())
+                            }
+                            _ => true,
+                        }
+                    })
+                    .cloned()
+            },
+            _ => stylesheets.iter().last().cloned(),
+        };
+
         DocumentOrShadowRoot::add_stylesheet(
             owner,
             StylesheetSetRef::Author(stylesheets),
@@ -202,7 +218,7 @@ impl ShadowRoot {
 
     /// Remove a stylesheet owned by `owner` from the list of shadow root sheets.
     #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
-    pub(crate) fn remove_stylesheet(&self, owner: &Element, s: &Arc<Stylesheet>) {
+    pub(crate) fn remove_stylesheet(&self, owner: StylesheetSource, s: &Arc<Stylesheet>) {
         DocumentOrShadowRoot::remove_stylesheet(
             owner,
             s,

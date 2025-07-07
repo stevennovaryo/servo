@@ -40,7 +40,7 @@ use fnv::FnvHashMap;
 use html5ever::{LocalName, Namespace, QualName, local_name, ns};
 use hyper_serde::Serde;
 use ipc_channel::ipc;
-use js::rust::{HandleObject, HandleValue};
+use js::rust::{HandleObject, HandleValue, MutableHandleValue};
 use keyboard_types::{Code, Key, KeyState, Modifiers};
 use layout_api::{
     PendingRestyle, ReflowGoal, RestyleReason, TrustedNodeAddress, node_id_from_scroll_id,
@@ -58,6 +58,7 @@ use profile_traits::ipc as profile_ipc;
 use profile_traits::time::TimerMetadataFrameType;
 use regex::bytes::Regex;
 use script_bindings::interfaces::DocumentHelpers;
+use script_bindings::script_runtime::JSContext;
 use script_traits::{ConstellationInputEvent, DocumentActivity, ProgressiveWebMetricType};
 use servo_arc::Arc;
 use servo_config::pref;
@@ -133,7 +134,7 @@ use crate::dom::customelementregistry::CustomElementDefinition;
 use crate::dom::customevent::CustomEvent;
 use crate::dom::datatransfer::DataTransfer;
 use crate::dom::documentfragment::DocumentFragment;
-use crate::dom::documentorshadowroot::{DocumentOrShadowRoot, StyleSheetInDocument};
+use crate::dom::documentorshadowroot::{DocumentOrShadowRoot, StyleSheetInDocument, StylesheetSource};
 use crate::dom::documenttype::DocumentType;
 use crate::dom::domimplementation::DOMImplementation;
 use crate::dom::element::{
@@ -561,6 +562,8 @@ pub(crate) struct Document {
     active_keyboard_modifiers: Cell<Modifiers>,
     /// The node that is currently highlighted by the devtools
     highlighted_dom_node: MutNullableDom<Node>,
+    /// MYNOTES: docum
+    adopted_stylesheets: DomRefCell<Vec<Dom<CSSStyleSheet>>>,
 }
 
 #[allow(non_snake_case)]
@@ -4236,6 +4239,7 @@ impl Document {
             intersection_observers: Default::default(),
             active_keyboard_modifiers: Cell::new(Modifiers::empty()),
             highlighted_dom_node: Default::default(),
+            adopted_stylesheets: Default::default(),
         }
     }
 
@@ -4878,23 +4882,39 @@ impl Document {
 
         stylesheets
             .get(Origin::Author, index)
-            .and_then(|s| s.owner.upcast::<Node>().get_cssom_stylesheet())
+            .and_then(|s|
+                s.owner.get_cssom_object()
+            )
     }
 
     /// Add a stylesheet owned by `owner` to the list of document sheets, in the
     /// correct tree position.
+    // TODO(stevennovayo): parameterize to support constructed stylesheet insertion
     #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
-    pub(crate) fn add_stylesheet(&self, owner: &Element, sheet: Arc<Stylesheet>) {
+    pub(crate) fn add_stylesheet(&self, owner: StylesheetSource, sheet: Arc<Stylesheet>) {
         let stylesheets = &mut *self.stylesheets.borrow_mut();
-        let insertion_point = stylesheets
-            .iter()
-            .map(|(sheet, _origin)| sheet)
-            .find(|sheet_in_doc| {
-                owner
-                    .upcast::<Node>()
-                    .is_before(sheet_in_doc.owner.upcast())
-            })
-            .cloned();
+
+        // TODO(stevennovayo): support ordering of constructed stylesheet
+        let insertion_point = match &owner {
+            StylesheetSource::Element(owner_elem) => {
+                stylesheets
+                    .iter()
+                    .map(|(sheet, _origin)| sheet)
+                    .find(|sheet_in_doc| {
+                        match sheet_in_doc.owner {
+                            StylesheetSource::Element(ref other_elem) => {
+                                owner_elem
+                                    .upcast::<Node>()
+                                    .is_before(other_elem.upcast())
+                            }
+                            _ => true,
+                        }
+                    })
+                    .cloned()
+            },
+            _ => stylesheets.iter().last().map(|(sheet, _origin)| sheet).cloned(),
+        };
+
 
         if self.has_browsing_context() {
             self.window.layout_mut().add_stylesheet(
@@ -4921,7 +4941,7 @@ impl Document {
 
     /// Remove a stylesheet owned by `owner` from the list of document sheets.
     #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
-    pub(crate) fn remove_stylesheet(&self, owner: &Element, stylesheet: &Arc<Stylesheet>) {
+    pub(crate) fn remove_stylesheet(&self, owner: StylesheetSource, stylesheet: &Arc<Stylesheet>) {
         if self.has_browsing_context() {
             self.window
                 .layout_mut()
@@ -6693,6 +6713,42 @@ impl DocumentMethods<crate::DomTypeHolder> for Document {
             can_gc,
         )
     }
+
+    // fn AdoptedStyleSheets(&self, context: JSContext, can_gc: CanGc, retval: MutableHandleValue) {
+    //     todo!()
+    //     // to_frozen_array(&self.thresholds.borrow(), context, retval, can_gc);
+    // }
+
+    // fn SetAdoptedStyleSheets(&self, context: JSContext, val: HandleValue) {
+    //     if val.get().is_object() {
+
+    //     }
+    //     todo!()
+    // }
+
+    // fn AdoptedStyleSheets(&self) -> Vec<DomRoot<CSSStyleSheet>> {
+    //     // todo!()
+    //     // to_frozen_array(&self.thresholds.borrow(), context, retval, can_gc);
+    //     self.adopted_stylesheets
+    //         .borrow()
+    //         .clone()
+    //         .iter()
+    //         .map(|sheet| sheet.as_rooted())
+    //         .collect()
+    // }
+
+    // fn SetAdoptedStyleSheets(
+    //     &self,
+    //     stylesheets: Vec<DomRoot<CSSStyleSheet>>,
+    //     can_gc: CanGc,
+    // ) -> ErrorResult {
+    //     let stylesheets = stylesheets.iter().map(|sheet| sheet.as_traced()).collect();
+    //     DocumentOrShadowRoot::set_adopted_stylesheet(
+    //         self.adopted_stylesheets.borrow_mut().as_mut(),
+    //         stylesheets,
+    //         StyleSheetListOwner::Document(Dom::from_ref(&self)),
+    //     )
+    // }
 }
 
 fn update_with_current_instant(marker: &Cell<Option<CrossProcessInstant>>) {

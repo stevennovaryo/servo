@@ -11,6 +11,7 @@ use crate::dom::bindings::reflector::{Reflector, reflect_dom_object};
 use crate::dom::bindings::root::{Dom, DomRoot};
 use crate::dom::cssstylesheet::CSSStyleSheet;
 use crate::dom::document::Document;
+use crate::dom::documentorshadowroot::StylesheetSource;
 use crate::dom::element::Element;
 use crate::dom::shadowroot::ShadowRoot;
 use crate::dom::stylesheet::StyleSheet;
@@ -39,7 +40,7 @@ impl StyleSheetListOwner {
         }
     }
 
-    pub(crate) fn add_stylesheet(&self, owner: &Element, sheet: Arc<Stylesheet>) {
+    pub(crate) fn add_stylesheet(&self, owner: StylesheetSource, sheet: Arc<Stylesheet>) {
         match *self {
             StyleSheetListOwner::Document(ref doc) => doc.add_stylesheet(owner, sheet),
             StyleSheetListOwner::ShadowRoot(ref shadow_root) => {
@@ -48,7 +49,7 @@ impl StyleSheetListOwner {
         }
     }
 
-    pub(crate) fn remove_stylesheet(&self, owner: &Element, s: &Arc<Stylesheet>) {
+    pub(crate) fn remove_stylesheet(&self, owner: StylesheetSource, s: &Arc<Stylesheet>) {
         match *self {
             StyleSheetListOwner::Document(ref doc) => doc.remove_stylesheet(owner, s),
             StyleSheetListOwner::ShadowRoot(ref shadow_root) => {

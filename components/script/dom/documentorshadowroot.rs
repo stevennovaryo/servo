@@ -22,13 +22,40 @@ use crate::dom::bindings::codegen::Bindings::ShadowRootBinding::ShadowRootMethod
 use crate::dom::bindings::inheritance::Castable;
 use crate::dom::bindings::num::Finite;
 use crate::dom::bindings::root::{Dom, DomRoot};
+use crate::dom::create;
 use crate::dom::element::Element;
 use crate::dom::htmlelement::HTMLElement;
 use crate::dom::node::{self, Node, VecPreOrderInsertionHelper};
 use crate::dom::shadowroot::ShadowRoot;
+use crate::dom::types::CSSStyleSheet;
 use crate::dom::window::Window;
 use crate::script_runtime::CanGc;
 use crate::stylesheet_set::StylesheetSetRef;
+
+#[derive(Clone, JSTraceable, MallocSizeOf)]
+#[cfg_attr(crown, crown::unrooted_must_root_lint::must_root)]
+pub(crate) enum StylesheetSource {
+    Element(Dom<Element>),
+    Constructed(Dom<CSSStyleSheet>),
+}
+
+impl StylesheetSource {
+    pub(crate) fn from_element(el: &Element) -> Self {
+        debug_assert!(el.as_stylesheet_owner().is_some());
+        StylesheetSource::Element(Dom::from_ref(el))
+    }
+
+    pub(crate) fn from_constructed(ss: &CSSStyleSheet) -> Self {
+        StylesheetSource::Constructed(Dom::from_ref(ss))
+    }
+
+    pub(crate) fn get_cssom_object(&self) -> Option<DomRoot<CSSStyleSheet>> {
+        match self {
+            StylesheetSource::Element(el) => el.upcast::<Node>().get_cssom_stylesheet(),
+            StylesheetSource::Constructed(ss) => Some(ss.as_rooted()),
+        }
+    }
+}
 
 #[derive(Clone, JSTraceable, MallocSizeOf)]
 #[cfg_attr(crown, crown::unrooted_must_root_lint::must_root)]
@@ -36,7 +63,10 @@ pub(crate) struct StyleSheetInDocument {
     #[ignore_malloc_size_of = "Arc"]
     #[no_trace]
     pub(crate) sheet: Arc<Stylesheet>,
-    pub(crate) owner: Dom<Element>,
+    /// The element that owns this stylesheet, note that constructed stylesheet
+    /// particularly does not have an owner.
+    pub(crate) owner: StylesheetSource,
+    // pub(crate) document_or_shadow_root: DocumentOrShadowRoot,
 }
 
 // This is necessary because this type is contained within a Stylo type which needs
@@ -83,9 +113,29 @@ impl ::style::stylesheets::StylesheetInDocument for StyleSheetInDocument {
     }
 }
 
+// impl StyleSheetInDocument {
+//     fn to_cssom_stylesheet(&self) -> Option<DomRoot<CSSStyleSheet>> {
+//         match &self.owner {
+//             Some(owner) => owner.upcast::<Node>().get_cssom_stylesheet(),
+//             None => {
+//                 Some(CSSStyleSheet::new(
+//                     &self.document_or_shadow_root.window,
+//                     None,
+//                     "text/css".into(),
+//                     None, // todo handle location
+//                     None, // todo handle title
+//                     self.sheet.clone(),
+//                     false, // is_constructed
+//                     CanGc::note(),
+//                 ))
+//             },
+//         }
+//     }
+// }
+
 // https://w3c.github.io/webcomponents/spec/shadow/#extensions-to-the-documentorshadowroot-mixin
 #[cfg_attr(crown, crown::unrooted_must_root_lint::must_root)]
-#[derive(JSTraceable, MallocSizeOf)]
+#[derive(Clone, JSTraceable, MallocSizeOf)]
 pub(crate) struct DocumentOrShadowRoot {
     window: Dom<Window>,
 }
@@ -225,7 +275,7 @@ impl DocumentOrShadowRoot {
     /// Remove a stylesheet owned by `owner` from the list of document sheets.
     #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
     pub(crate) fn remove_stylesheet(
-        owner: &Element,
+        owner: StylesheetSource,
         s: &Arc<Stylesheet>,
         mut stylesheets: StylesheetSetRef<StyleSheetInDocument>,
     ) {
@@ -236,7 +286,7 @@ impl DocumentOrShadowRoot {
             None,
             StyleSheetInDocument {
                 sheet: s.clone(),
-                owner: Dom::from_ref(owner),
+                owner,
             },
             &guard,
         );
@@ -246,17 +296,15 @@ impl DocumentOrShadowRoot {
     /// correct tree position.
     #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
     pub(crate) fn add_stylesheet(
-        owner: &Element,
+        owner: StylesheetSource,
         mut stylesheets: StylesheetSetRef<StyleSheetInDocument>,
         sheet: Arc<Stylesheet>,
         insertion_point: Option<StyleSheetInDocument>,
         style_shared_lock: &StyleSharedRwLock,
     ) {
-        debug_assert!(owner.as_stylesheet_owner().is_some(), "Wat");
-
         let sheet = StyleSheetInDocument {
             sheet,
-            owner: Dom::from_ref(owner),
+            owner,
         };
 
         let guard = style_shared_lock.read();
