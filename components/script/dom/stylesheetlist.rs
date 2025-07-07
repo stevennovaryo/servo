@@ -39,7 +39,7 @@ impl StyleSheetListOwner {
         }
     }
 
-    pub(crate) fn add_stylesheet(&self, owner: &Element, sheet: Arc<Stylesheet>) {
+    pub(crate) fn add_stylesheet(&self, owner: Option<&Element>, sheet: Arc<Stylesheet>) {
         match *self {
             StyleSheetListOwner::Document(ref doc) => doc.add_stylesheet(owner, sheet),
             StyleSheetListOwner::ShadowRoot(ref shadow_root) => {
@@ -48,7 +48,7 @@ impl StyleSheetListOwner {
         }
     }
 
-    pub(crate) fn remove_stylesheet(&self, owner: &Element, s: &Arc<Stylesheet>) {
+    pub(crate) fn remove_stylesheet(&self, owner: Option<&Element>, s: &Arc<Stylesheet>) {
         match *self {
             StyleSheetListOwner::Document(ref doc) => doc.remove_stylesheet(owner, s),
             StyleSheetListOwner::ShadowRoot(ref shadow_root) => {

@@ -175,11 +175,11 @@ impl HTMLLinkElement {
     pub(crate) fn set_stylesheet(&self, s: Arc<Stylesheet>) {
         let stylesheets_owner = self.stylesheet_list_owner();
         if let Some(ref s) = *self.stylesheet.borrow() {
-            stylesheets_owner.remove_stylesheet(self.upcast(), s)
+            stylesheets_owner.remove_stylesheet(Some(self.upcast()), s)
         }
         *self.stylesheet.borrow_mut() = Some(s.clone());
         self.clean_stylesheet_ownership();
-        stylesheets_owner.add_stylesheet(self.upcast(), s);
+        stylesheets_owner.add_stylesheet(Some(self.upcast()), s);
     }
 
     pub(crate) fn get_stylesheet(&self) -> Option<Arc<Stylesheet>> {
@@ -413,7 +413,7 @@ impl VirtualMethods for HTMLLinkElement {
         if let Some(s) = self.stylesheet.borrow_mut().take() {
             self.clean_stylesheet_ownership();
             self.stylesheet_list_owner()
-                .remove_stylesheet(self.upcast(), &s);
+                .remove_stylesheet(Some(self.upcast()), &s);
         }
     }
 }

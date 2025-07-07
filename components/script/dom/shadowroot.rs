@@ -175,22 +175,34 @@ impl ShadowRoot {
 
         stylesheets
             .get(index)
-            .and_then(|s| s.owner.upcast::<Node>().get_cssom_stylesheet())
+            .and_then(|s|
+                // TODO(stevennovaryo): Handle constructable stylesheet.
+                s.owner.as_ref().and_then(|o| o.upcast::<Node>().get_cssom_stylesheet())
+            )
     }
 
     /// Add a stylesheet owned by `owner` to the list of shadow root sheets, in the
     /// correct tree position.
     #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
-    pub(crate) fn add_stylesheet(&self, owner: &Element, sheet: Arc<Stylesheet>) {
+    pub(crate) fn add_stylesheet(&self, owner: Option<&Element>, sheet: Arc<Stylesheet>) {
         let stylesheets = &mut self.author_styles.borrow_mut().stylesheets;
-        let insertion_point = stylesheets
-            .iter()
-            .find(|sheet_in_shadow| {
-                owner
-                    .upcast::<Node>()
-                    .is_before(sheet_in_shadow.owner.upcast())
-            })
-            .cloned();
+
+        let insertion_point = owner.and_then(|owner_elem| {
+            stylesheets
+                .iter()
+                .find(|sheet_in_shadow| {
+                    match sheet_in_shadow.owner {
+                        Some(ref other_elem) => {
+                            owner_elem
+                                .upcast::<Node>()
+                                .is_before(other_elem.upcast())
+                        }
+                        None => true,
+                    }
+                })
+                .cloned()
+        });
+
         DocumentOrShadowRoot::add_stylesheet(
             owner,
             StylesheetSetRef::Author(stylesheets),
@@ -202,7 +214,7 @@ impl ShadowRoot {
 
     /// Remove a stylesheet owned by `owner` from the list of shadow root sheets.
     #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
-    pub(crate) fn remove_stylesheet(&self, owner: &Element, s: &Arc<Stylesheet>) {
+    pub(crate) fn remove_stylesheet(&self, owner: Option<&Element>, s: &Arc<Stylesheet>) {
         DocumentOrShadowRoot::remove_stylesheet(
             owner,
             s,
