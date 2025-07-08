@@ -4880,12 +4880,9 @@ impl Document {
     pub(crate) fn stylesheet_at(&self, index: usize) -> Option<DomRoot<CSSStyleSheet>> {
         let stylesheets = self.stylesheets.borrow();
 
-        stylesheets
-            .get(Origin::Author, index)
-            .and_then(|s|
+        stylesheets.get(Origin::Author, index).and_then(|s|
                 // TODO(stevennovaryo): Handle constructable stylesheet.
-                s.owner.as_ref().and_then(|o| o.upcast::<Node>().get_cssom_stylesheet())
-            )
+                s.owner.as_ref().and_then(|o| o.upcast::<Node>().get_cssom_stylesheet()))
     }
 
     /// Add a stylesheet owned by `owner` to the list of document sheets, in the
@@ -4897,15 +4894,11 @@ impl Document {
             stylesheets
                 .iter()
                 .map(|(sheet, _origin)| sheet)
-                .find(|sheet_in_doc| {
-                    match sheet_in_doc.owner {
-                        Some(ref other_elem) => {
-                            owner_elem
-                                .upcast::<Node>()
-                                .is_before(other_elem.upcast())
-                        }
-                        None => true,
-                    }
+                .find(|sheet_in_doc| match sheet_in_doc.owner {
+                    Some(ref other_elem) => {
+                        owner_elem.upcast::<Node>().is_before(other_elem.upcast())
+                    },
+                    None => true,
                 })
                 .cloned()
         });
@@ -6720,29 +6713,30 @@ impl DocumentMethods<crate::DomTypeHolder> for Document {
     //     todo!()
     // }
 
-    // fn AdoptedStyleSheets(&self) -> Vec<DomRoot<CSSStyleSheet>> {
-    //     // todo!()
-    //     // to_frozen_array(&self.thresholds.borrow(), context, retval, can_gc);
-    //     self.adopted_stylesheets
-    //         .borrow()
-    //         .clone()
-    //         .iter()
-    //         .map(|sheet| sheet.as_rooted())
-    //         .collect()
-    // }
+    fn AdoptedStyleSheets(&self) -> Vec<DomRoot<CSSStyleSheet>> {
+        // todo!()
+        // to_frozen_array(&self.thresholds.borrow(), context, retval, can_gc);
+        self.adopted_stylesheets
+            .borrow()
+            .clone()
+            .iter()
+            .map(|sheet| sheet.as_rooted())
+            .collect()
+    }
 
-    // fn SetAdoptedStyleSheets(
-    //     &self,
-    //     stylesheets: Vec<DomRoot<CSSStyleSheet>>,
-    //     can_gc: CanGc,
-    // ) -> ErrorResult {
-    //     let stylesheets = stylesheets.iter().map(|sheet| sheet.as_traced()).collect();
-    //     DocumentOrShadowRoot::set_adopted_stylesheet(
-    //         self.adopted_stylesheets.borrow_mut().as_mut(),
-    //         stylesheets,
-    //         StyleSheetListOwner::Document(Dom::from_ref(&self)),
-    //     )
-    // }
+    fn SetAdoptedStyleSheets(
+        &self,
+        stylesheets: Vec<DomRoot<CSSStyleSheet>>,
+        can_gc: CanGc,
+    ) -> ErrorResult {
+        rooted_vec!(let stylesheets <- stylesheets.iter().map(|s| s.as_traced()));
+
+        DocumentOrShadowRoot::set_adopted_stylesheet(
+            self.adopted_stylesheets.borrow_mut().as_mut(),
+            &stylesheets,
+            &StyleSheetListOwner::Document(Dom::from_ref(self)),
+        )
+    }
 }
 
 fn update_with_current_instant(marker: &Cell<Option<CrossProcessInstant>>) {

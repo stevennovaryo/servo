@@ -8,6 +8,7 @@ use std::collections::hash_map::Entry;
 
 use dom_struct::dom_struct;
 use html5ever::serialize::TraversalScope;
+use script_bindings::error::ErrorResult;
 use servo_arc::Arc;
 use style::author_styles::AuthorStyles;
 use style::dom::TElement;
@@ -90,6 +91,9 @@ pub(crate) struct ShadowRoot {
 
     /// <https://dom.spec.whatwg.org/#shadowroot-delegates-focus>
     delegates_focus: Cell<bool>,
+
+    /// MYNOTES: docum this
+    adopted_stylesheets: DomRefCell<Vec<Dom<CSSStyleSheet>>>,
 }
 
 impl ShadowRoot {
@@ -127,6 +131,7 @@ impl ShadowRoot {
             declarative: Cell::new(false),
             serializable: Cell::new(false),
             delegates_focus: Cell::new(false),
+            adopted_stylesheets: Default::default(),
         }
     }
 
@@ -173,12 +178,9 @@ impl ShadowRoot {
     pub(crate) fn stylesheet_at(&self, index: usize) -> Option<DomRoot<CSSStyleSheet>> {
         let stylesheets = &self.author_styles.borrow().stylesheets;
 
-        stylesheets
-            .get(index)
-            .and_then(|s|
+        stylesheets.get(index).and_then(|s|
                 // TODO(stevennovaryo): Handle constructable stylesheet.
-                s.owner.as_ref().and_then(|o| o.upcast::<Node>().get_cssom_stylesheet())
-            )
+                s.owner.as_ref().and_then(|o| o.upcast::<Node>().get_cssom_stylesheet()))
     }
 
     /// Add a stylesheet owned by `owner` to the list of shadow root sheets, in the
@@ -190,15 +192,11 @@ impl ShadowRoot {
         let insertion_point = owner.and_then(|owner_elem| {
             stylesheets
                 .iter()
-                .find(|sheet_in_shadow| {
-                    match sheet_in_shadow.owner {
-                        Some(ref other_elem) => {
-                            owner_elem
-                                .upcast::<Node>()
-                                .is_before(other_elem.upcast())
-                        }
-                        None => true,
-                    }
+                .find(|sheet_in_shadow| match sheet_in_shadow.owner {
+                    Some(ref other_elem) => {
+                        owner_elem.upcast::<Node>().is_before(other_elem.upcast())
+                    },
+                    None => true,
                 })
                 .cloned()
         });
@@ -476,6 +474,31 @@ impl ShadowRootMethods<crate::DomTypeHolder> for ShadowRoot {
 
     // https://dom.spec.whatwg.org/#dom-shadowroot-onslotchange
     event_handler!(onslotchange, GetOnslotchange, SetOnslotchange);
+
+    fn AdoptedStyleSheets(&self) -> Vec<DomRoot<CSSStyleSheet>> {
+        // todo!()
+        // to_frozen_array(&self.thresholds.borrow(), context, retval, can_gc);
+        self.adopted_stylesheets
+            .borrow()
+            .clone()
+            .iter()
+            .map(|sheet| sheet.as_rooted())
+            .collect()
+    }
+
+    fn SetAdoptedStyleSheets(
+        &self,
+        stylesheets: Vec<DomRoot<CSSStyleSheet>>,
+        can_gc: CanGc,
+    ) -> ErrorResult {
+        rooted_vec!(let stylesheets <- stylesheets.iter().map(|s| s.as_traced()));
+
+        DocumentOrShadowRoot::set_adopted_stylesheet(
+            self.adopted_stylesheets.borrow_mut().as_mut(),
+            &stylesheets,
+            &StyleSheetListOwner::ShadowRoot(Dom::from_ref(self)),
+        )
+    }
 }
 
 impl VirtualMethods for ShadowRoot {

@@ -122,6 +122,17 @@ RUST_KEYWORDS = {
 }
 
 
+def reservedSlot(slotIndex):
+    return "(1 + %d)" % slotIndex
+
+
+def getSlotIndex(member, descriptor):
+    slotIndex = member.slotIndices[descriptor.interface.identifier.name]
+    return slotIndex[0] if isinstance(slotIndex, tuple) else slotIndex
+
+def memberReservedSlot(member, descriptor):
+    return reservedSlot(getSlotIndex(member, descriptor))
+
 def genericsForType(t):
     if containsDomInterface(t):
         return ("<D: DomTypes>", "<D>")
@@ -4687,7 +4698,7 @@ pub(crate) fn init_{infoName}<D: DomTypes>() {{
             if self.member.slotIndices is not None:
                 assert isAlwaysInSlot or self.member.getExtendedAttribute("Cached")
                 isLazilyCachedInSlot = not isAlwaysInSlot
-                slotIndex = memberReservedSlot(self.member)  # noqa:FIXME: memberReservedSlot is not defined
+                slotIndex = memberReservedSlot(self.member, self.descriptor)  # noqa:FIXME: memberReservedSlot is not defined
                 # We'll statically assert that this is not too big in
                 # CGUpdateMemberSlotsMethod, in the case when
                 # isAlwaysInSlot is true.

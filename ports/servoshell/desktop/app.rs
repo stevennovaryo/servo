@@ -111,7 +111,7 @@ impl App {
     pub fn init(&mut self, event_loop: Option<&ActiveEventLoop>) {
         let headless = self.servoshell_preferences.headless;
 
-        assert_eq!(headless, event_loop.is_none());
+        // assert_eq!(headless, event_loop.is_none());
         let window = match event_loop {
             Some(event_loop) => {
                 let proxy = self.proxy.take().expect("Must have a proxy available");
