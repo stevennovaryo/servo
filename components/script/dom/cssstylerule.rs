@@ -136,9 +136,7 @@ impl CSSStyleRuleMethods<crate::DomTypeHolder> for CSSStyleRule {
             let mut guard = self.cssgroupingrule.shared_lock().write();
             let stylerule = self.stylerule.write_with(&mut guard);
             mem::swap(&mut stylerule.selectors, &mut s);
-            if let Some(owner) = self.cssgroupingrule.parent_stylesheet().get_owner() {
-                owner.stylesheet_list_owner().invalidate_stylesheets();
-            }
+            self.cssgroupingrule.parent_stylesheet().notify_invalidations();
         }
     }
 }

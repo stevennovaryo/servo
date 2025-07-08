@@ -13,6 +13,7 @@ use style::stylesheets::{
     AllowImportRules, CssRuleTypes, Origin, Stylesheet as StyleStyleSheet, UrlExtraData,
 };
 
+use crate::dom::bindings::cell::DomRefCell;
 use crate::dom::bindings::codegen::Bindings::CSSStyleSheetBinding::{
     CSSStyleSheetInit, CSSStyleSheetMethods,
 };
@@ -26,10 +27,12 @@ use crate::dom::bindings::reflector::{
 use crate::dom::bindings::root::{DomRoot, MutNullableDom};
 use crate::dom::bindings::str::{DOMString, USVString};
 use crate::dom::cssrulelist::{CSSRuleList, RulesSource};
+use crate::dom::documentorshadowroot::StyleSheetInDocument;
 use crate::dom::element::Element;
 use crate::dom::medialist::MediaList;
-use crate::dom::node::NodeTraits;
+use crate::dom::node::{Node, NodeDamage, NodeTraits};
 use crate::dom::stylesheet::StyleSheet;
+use crate::dom::stylesheetlist::StyleSheetListOwner;
 use crate::dom::window::Window;
 use crate::script_runtime::CanGc;
 
@@ -43,6 +46,7 @@ pub(crate) struct CSSStyleSheet {
     style_stylesheet: Arc<StyleStyleSheet>,
     origin_clean: Cell<bool>,
     is_constructed: bool,
+    adopters: DomRefCell<Vec<StyleSheetListOwner>>,
 }
 
 impl CSSStyleSheet {
@@ -61,6 +65,7 @@ impl CSSStyleSheet {
             style_stylesheet: stylesheet,
             origin_clean: Cell::new(true),
             is_constructed,
+            adopters: Default::default(),
         }
     }
 
@@ -139,11 +144,8 @@ impl CSSStyleSheet {
     }
 
     pub(crate) fn set_disabled(&self, disabled: bool) {
-        if self.style_stylesheet.set_disabled(disabled) && self.get_owner().is_some() {
-            self.get_owner()
-                .unwrap()
-                .stylesheet_list_owner()
-                .invalidate_stylesheets();
+        if self.style_stylesheet.set_disabled(disabled) {
+            self.notify_invalidations();
         }
     }
 
@@ -156,6 +158,10 @@ impl CSSStyleSheet {
     }
 
     pub(crate) fn style_stylesheet(&self) -> &StyleStyleSheet {
+        &self.style_stylesheet
+    }
+
+    pub(crate) fn style_stylesheet_arc(&self) -> &Arc<StyleStyleSheet> {
         &self.style_stylesheet
     }
 
@@ -177,6 +183,35 @@ impl CSSStyleSheet {
     pub(crate) fn is_constructed(&self) -> bool {
         self.is_constructed
     }
+
+    #[cfg_attr(crown, allow(crown::unrooted_must_root))]
+    pub(crate) fn add_adopter(&self, owner: StyleSheetListOwner) {
+        self.adopters.borrow_mut().push(owner);
+    }
+
+    pub(crate) fn remove_adopter(&self, owner: &StyleSheetListOwner) {
+        let adopters = &mut *self.adopters.borrow_mut();
+        if let Some(index) = adopters.iter().position(|o| o == owner) {
+            adopters.swap_remove(index);
+        }
+    }
+
+    pub(crate) fn notify_invalidations(&self) {
+        if let Some(owner) = self.get_owner() {
+            owner.stylesheet_list_owner().invalidate_stylesheets();
+        }
+        for adopter in self.adopters.borrow().iter() {
+            adopter.invalidate_stylesheets();
+        }
+    }
+
+
+    // pub(crate) fn as_stylesheet_in_document(&self) -> StyleSheetInDocument {
+    //     StyleSheetInDocument {
+    //         sheet: self.style_stylesheet.clone(),
+    //         owner: self.owner.get().unwrap().as_traced(),
+    //     }
+    // }
 }
 
 impl CSSStyleSheetMethods<crate::DomTypeHolder> for CSSStyleSheet {
@@ -315,6 +350,8 @@ impl CSSStyleSheetMethods<crate::DomTypeHolder> for CSSStyleSheet {
         // We reset our rule list, which will be initialized properly
         // at the next getter access.
         self.rulelist.set(None);
+
+        self.notify_invalidations();
 
         Ok(())
     }

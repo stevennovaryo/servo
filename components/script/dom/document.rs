@@ -6726,29 +6726,30 @@ impl DocumentMethods<crate::DomTypeHolder> for Document {
     //     todo!()
     // }
 
-    // fn AdoptedStyleSheets(&self) -> Vec<DomRoot<CSSStyleSheet>> {
-    //     // todo!()
-    //     // to_frozen_array(&self.thresholds.borrow(), context, retval, can_gc);
-    //     self.adopted_stylesheets
-    //         .borrow()
-    //         .clone()
-    //         .iter()
-    //         .map(|sheet| sheet.as_rooted())
-    //         .collect()
-    // }
+    fn AdoptedStyleSheets(&self) -> Vec<DomRoot<CSSStyleSheet>> {
+        // todo!()
+        // to_frozen_array(&self.thresholds.borrow(), context, retval, can_gc);
+        self.adopted_stylesheets
+            .borrow()
+            .clone()
+            .iter()
+            .map(|sheet| sheet.as_rooted())
+            .collect()
+    }
 
-    // fn SetAdoptedStyleSheets(
-    //     &self,
-    //     stylesheets: Vec<DomRoot<CSSStyleSheet>>,
-    //     can_gc: CanGc,
-    // ) -> ErrorResult {
-    //     let stylesheets = stylesheets.iter().map(|sheet| sheet.as_traced()).collect();
-    //     DocumentOrShadowRoot::set_adopted_stylesheet(
-    //         self.adopted_stylesheets.borrow_mut().as_mut(),
-    //         stylesheets,
-    //         StyleSheetListOwner::Document(Dom::from_ref(&self)),
-    //     )
-    // }
+    fn SetAdoptedStyleSheets(
+        &self,
+        stylesheets: Vec<DomRoot<CSSStyleSheet>>,
+        can_gc: CanGc,
+    ) -> ErrorResult {
+        rooted_vec!(let stylesheets <- stylesheets.iter().map(|s| s.as_traced()));
+
+        DocumentOrShadowRoot::set_adopted_stylesheet(
+            self.adopted_stylesheets.borrow_mut().as_mut(),
+            &stylesheets,
+            &StyleSheetListOwner::Document(Dom::from_ref(self)),
+        )
+    }
 }
 
 fn update_with_current_instant(marker: &Cell<Option<CrossProcessInstant>>) {

@@ -37,6 +37,24 @@ where
         }
     }
 
+    // /// Get a reference to stylesheet to the current set.
+    // ///
+    // /// No device implies not computing invalidations.
+    // pub fn get_stylesheet(&self, index: usize) -> Option<&S> {
+    //     match self {
+    //         StylesheetSetRef::Author(set) => set.get(index),
+    //         StylesheetSetRef::Document(set) => set.get(Origin::, index),
+    //     }
+    // }
+
+    // /// Get the length of stylesheet.
+    // pub fn stylesheet_len(&self) -> usize {
+    //     match self {
+    //         StylesheetSetRef::Author(set) => set.len(),
+    //         StylesheetSetRef::Document(set) => set.len(),
+    //     }
+    // }
+
     /// Insert a given stylesheet before another stylesheet in the document.
     pub(crate) fn insert_stylesheet_before(
         &mut self,
