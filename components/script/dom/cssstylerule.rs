@@ -21,7 +21,6 @@ use crate::dom::cssgroupingrule::CSSGroupingRule;
 use crate::dom::cssrule::SpecificCSSRule;
 use crate::dom::cssstyledeclaration::{CSSModificationAccess, CSSStyleDeclaration, CSSStyleOwner};
 use crate::dom::cssstylesheet::CSSStyleSheet;
-use crate::dom::node::NodeTraits;
 use crate::dom::window::Window;
 use crate::script_runtime::CanGc;
 

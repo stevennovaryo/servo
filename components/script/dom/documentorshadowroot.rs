@@ -352,7 +352,7 @@ impl DocumentOrShadowRoot {
 
     pub(crate) fn set_adopted_stylesheet(
         adopted_stylesheets: &mut Vec<Dom<CSSStyleSheet>>,
-        incoming_stylesheets: &Vec<Dom<CSSStyleSheet>>,
+        incoming_stylesheets: &[Dom<CSSStyleSheet>],
         owner: &StyleSheetListOwner,
     ) -> ErrorResult {
         for sheet in adopted_stylesheets.iter() {

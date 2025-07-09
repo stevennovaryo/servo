@@ -122,17 +122,6 @@ RUST_KEYWORDS = {
 }
 
 
-def reservedSlot(slotIndex):
-    return "(1 + %d)" % slotIndex
-
-
-def getSlotIndex(member, descriptor):
-    slotIndex = member.slotIndices[descriptor.interface.identifier.name]
-    return slotIndex[0] if isinstance(slotIndex, tuple) else slotIndex
-
-def memberReservedSlot(member, descriptor):
-    return reservedSlot(getSlotIndex(member, descriptor))
-
 def genericsForType(t):
     if containsDomInterface(t):
         return ("<D: DomTypes>", "<D>")
