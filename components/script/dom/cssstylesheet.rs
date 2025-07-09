@@ -27,10 +27,9 @@ use crate::dom::bindings::reflector::{
 use crate::dom::bindings::root::{DomRoot, MutNullableDom};
 use crate::dom::bindings::str::{DOMString, USVString};
 use crate::dom::cssrulelist::{CSSRuleList, RulesSource};
-use crate::dom::documentorshadowroot::StyleSheetInDocument;
 use crate::dom::element::Element;
 use crate::dom::medialist::MediaList;
-use crate::dom::node::{Node, NodeDamage, NodeTraits};
+use crate::dom::node::NodeTraits;
 use crate::dom::stylesheet::StyleSheet;
 use crate::dom::stylesheetlist::StyleSheetListOwner;
 use crate::dom::window::Window;
@@ -46,6 +45,9 @@ pub(crate) struct CSSStyleSheet {
     style_stylesheet: Arc<StyleStyleSheet>,
     origin_clean: Cell<bool>,
     is_constructed: bool,
+
+    /// Documents or shadow DOMs thats adopt this stylesheet, they will be
+    /// notified whenever the stylesheet is modified.
     adopters: DomRefCell<Vec<StyleSheetListOwner>>,
 }
 
@@ -204,14 +206,6 @@ impl CSSStyleSheet {
             adopter.invalidate_stylesheets();
         }
     }
-
-
-    // pub(crate) fn as_stylesheet_in_document(&self) -> StyleSheetInDocument {
-    //     StyleSheetInDocument {
-    //         sheet: self.style_stylesheet.clone(),
-    //         owner: self.owner.get().unwrap().as_traced(),
-    //     }
-    // }
 }
 
 impl CSSStyleSheetMethods<crate::DomTypeHolder> for CSSStyleSheet {

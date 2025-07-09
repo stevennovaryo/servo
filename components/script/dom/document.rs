@@ -40,6 +40,7 @@ use fnv::FnvHashMap;
 use html5ever::{LocalName, Namespace, QualName, local_name, ns};
 use hyper_serde::Serde;
 use ipc_channel::ipc;
+use js::conversions::ConversionResult;
 use js::rust::{HandleObject, HandleValue, MutableHandleValue};
 use keyboard_types::{Code, Key, KeyState, Modifiers};
 use layout_api::{
@@ -111,6 +112,7 @@ use crate::dom::bindings::codegen::Bindings::XPathNSResolverBinding::XPathNSReso
 use crate::dom::bindings::codegen::UnionTypes::{
     NodeOrString, StringOrElementCreationOptions, TrustedHTMLOrString,
 };
+use crate::dom::bindings::frozenarray::CachedFrozenArray;
 use crate::dom::bindings::error::{Error, ErrorInfo, ErrorResult, Fallible};
 use crate::dom::bindings::inheritance::{Castable, ElementTypeId, HTMLElementTypeId, NodeTypeId};
 use crate::dom::bindings::num::Finite;
@@ -205,6 +207,7 @@ use crate::drag_data_store::{DragDataStore, Kind, Mode};
 use crate::fetch::FetchCanceller;
 use crate::iframe_collection::IFrameCollection;
 use crate::image_animation::ImageAnimationManager;
+use crate::js::conversions::FromJSValConvertible;
 use crate::messaging::{CommonScriptMsg, MainThreadScriptMsg};
 use crate::mime::{APPLICATION, CHARSET, MimeExt};
 use crate::network_listener::{NetworkListener, PreInvoke};
@@ -564,6 +567,9 @@ pub(crate) struct Document {
     highlighted_dom_node: MutNullableDom<Node>,
     /// MYNOTES: docum
     adopted_stylesheets: DomRefCell<Vec<Dom<CSSStyleSheet>>>,
+    /// MYNOTES: docum this
+    #[ignore_malloc_size_of = "mozjs"]
+    adopted_stylesheets_frozen_types: CachedFrozenArray,
 }
 
 #[allow(non_snake_case)]
@@ -4240,6 +4246,7 @@ impl Document {
             active_keyboard_modifiers: Cell::new(Modifiers::empty()),
             highlighted_dom_node: Default::default(),
             adopted_stylesheets: Default::default(),
+            adopted_stylesheets_frozen_types: CachedFrozenArray::new(),
         }
     }
 
@@ -6714,41 +6721,47 @@ impl DocumentMethods<crate::DomTypeHolder> for Document {
         )
     }
 
-    // fn AdoptedStyleSheets(&self, context: JSContext, can_gc: CanGc, retval: MutableHandleValue) {
-    //     todo!()
-    //     // to_frozen_array(&self.thresholds.borrow(), context, retval, can_gc);
-    // }
-
-    // fn SetAdoptedStyleSheets(&self, context: JSContext, val: HandleValue) {
-    //     if val.get().is_object() {
-
-    //     }
-    //     todo!()
-    // }
-
-    fn AdoptedStyleSheets(&self) -> Vec<DomRoot<CSSStyleSheet>> {
-        // todo!()
-        // to_frozen_array(&self.thresholds.borrow(), context, retval, can_gc);
-        self.adopted_stylesheets
-            .borrow()
-            .clone()
-            .iter()
-            .map(|sheet| sheet.as_rooted())
-            .collect()
+    fn AdoptedStyleSheets(&self, context: JSContext, can_gc: CanGc, retval: MutableHandleValue) {
+        self.adopted_stylesheets_frozen_types.get_or_init(
+            || {
+                self.adopted_stylesheets
+                    .borrow()
+                    .clone()
+                    .iter()
+                    .map(|sheet| sheet.as_rooted())
+                    .collect()
+            },
+            context,
+            retval,
+            can_gc,
+        );
     }
 
+    #[allow(unsafe_code)]
     fn SetAdoptedStyleSheets(
         &self,
-        stylesheets: Vec<DomRoot<CSSStyleSheet>>,
-        can_gc: CanGc,
+        context: JSContext,
+        val: HandleValue,
     ) -> ErrorResult {
-        rooted_vec!(let stylesheets <- stylesheets.iter().map(|s| s.as_traced()));
+        let maybe_stylesheets = unsafe {
+            Vec::<DomRoot<CSSStyleSheet>>::from_jsval(*context, val, ())
+        };
 
-        DocumentOrShadowRoot::set_adopted_stylesheet(
-            self.adopted_stylesheets.borrow_mut().as_mut(),
-            &stylesheets,
-            &StyleSheetListOwner::Document(Dom::from_ref(self)),
-        )
+        match maybe_stylesheets {
+            Ok(ConversionResult::Success(stylesheets)) => {
+                rooted_vec!(let stylesheets <- stylesheets.to_owned().iter().map(|s| s.as_traced()));
+
+                DocumentOrShadowRoot::set_adopted_stylesheet(
+                    self.adopted_stylesheets.borrow_mut().as_mut(),
+                    &stylesheets,
+                    &StyleSheetListOwner::Document(Dom::from_ref(self)),
+                )
+            },
+            Ok(ConversionResult::Failure(msg)) => {
+                Err(Error::Type(msg.to_string()))
+            },
+            Err(_) => Err(Error::Type("The provided value is not a sequence of 'CSSStylesheet'.".to_owned())),
+        }
     }
 }
 
