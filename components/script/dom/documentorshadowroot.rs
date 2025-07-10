@@ -25,7 +25,6 @@ use crate::dom::bindings::codegen::Bindings::ShadowRootBinding::ShadowRootMethod
 use crate::dom::bindings::inheritance::Castable;
 use crate::dom::bindings::num::Finite;
 use crate::dom::bindings::root::{Dom, DomRoot};
-use crate::dom::create;
 use crate::dom::element::Element;
 use crate::dom::htmlelement::HTMLElement;
 use crate::dom::node::{self, Node, VecPreOrderInsertionHelper};
@@ -44,11 +43,13 @@ pub(crate) enum StylesheetSource {
 }
 
 impl StylesheetSource {
+    #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
     pub(crate) fn from_element(el: &Element) -> Self {
         debug_assert!(el.as_stylesheet_owner().is_some());
         StylesheetSource::Element(Dom::from_ref(el))
     }
 
+    #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
     pub(crate) fn from_constructed(ss: &CSSStyleSheet) -> Self {
         StylesheetSource::Constructed(Dom::from_ref(ss))
     }

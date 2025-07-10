@@ -40,6 +40,7 @@ impl StyleSheetListOwner {
         }
     }
 
+    #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
     pub(crate) fn add_stylesheet(&self, owner: StylesheetSource, sheet: Arc<Stylesheet>) {
         match *self {
             StyleSheetListOwner::Document(ref doc) => doc.add_stylesheet(owner, sheet),
@@ -49,6 +50,7 @@ impl StyleSheetListOwner {
         }
     }
 
+    #[cfg_attr(crown, allow(crown::unrooted_must_root))] // Owner needs to be rooted already necessarily.
     pub(crate) fn remove_stylesheet(&self, owner: StylesheetSource, s: &Arc<Stylesheet>) {
         match *self {
             StyleSheetListOwner::Document(ref doc) => doc.remove_stylesheet(owner, s),
