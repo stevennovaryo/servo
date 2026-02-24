@@ -2882,33 +2882,50 @@ impl HTMLInputElement {
 
     /// <https://html.spec.whatwg.org/multipage/#show-the-picker,-if-applicable>
     fn show_the_picker_if_applicable(&self) {
-        // FIXME: Implement most of this algorithm
+        // Step 1. If element's relevant global object does not have transient activation, then return.
+        if !self.owner_window().has_transient_activation() {
+            return;
+        }
 
         // Step 2. If element is not mutable, then return.
         if !self.is_mutable() {
             return;
         }
 
-        // Step 6. Otherwise, the user agent should show the relevant user interface for selecting a value for element,
-        // in the way it normally would when the user interacts with the control.
-        if self.input_type() == InputType::Color {
-            let document = self.owner_document();
-            let current_value = self.Value();
-            let current_color = parse_color_value(
-                &current_value.str(),
-                self.owner_document().url().as_url().to_owned(),
-            )
-            .to_color_space(ColorSpace::Srgb);
-            let current_color = RgbColor {
-                red: (current_color.components.0 * 255.0).round() as u8,
-                green: (current_color.components.1 * 255.0).round() as u8,
-                blue: (current_color.components.2 * 255.0).round() as u8,
-            };
-            document.embedder_controls().show_embedder_control(
-                ControlElement::ColorInput(DomRoot::from_ref(self)),
-                EmbedderControlRequest::ColorPicker(current_color),
-                None,
-            );
+        // Step 3. Consume user activation given element's relevant global object.
+        self.owner_window().consume_user_activation();
+
+        // Step 4. If element does not support a picker, then return.
+        // Handled by not processing the input types below
+        match self.input_type() {
+            // Step 5. If element is an input element and element's type attribute is in the File Upload state,
+            // then run these steps in parallel:
+            InputType::File => {
+                // Spec wants us to run the file opener in parallel so that we wait for the file selection result.
+                // But we are relying on callbacks from the embedder instead.
+                self.select_files(None);
+            },
+            // Step 6. Otherwise, the user agent should show the relevant user interface for selecting a value for element,
+            // in the way it normally would when the user interacts with the control.
+            // TODO: currently other than `file`, we only support picker for `color`.
+            InputType::Color => {
+                let document = self.owner_document();
+                let current_value = self.Value();
+                let current_color =
+                    parse_color_value(&current_value.str(), document.url().as_url().to_owned())
+                        .to_color_space(ColorSpace::Srgb);
+                let current_color = RgbColor {
+                    red: (current_color.components.0 * 255.0).round() as u8,
+                    green: (current_color.components.1 * 255.0).round() as u8,
+                    blue: (current_color.components.2 * 255.0).round() as u8,
+                };
+                document.embedder_controls().show_embedder_control(
+                    ControlElement::ColorInput(DomRoot::from_ref(self)),
+                    EmbedderControlRequest::ColorPicker(current_color),
+                    None,
+                );
+            },
+            _ => {},
         }
     }
 
@@ -3728,12 +3745,9 @@ impl Activatable for HTMLInputElement {
                 // initialized to true.
                 target.fire_bubbling_event(atom!("change"), can_gc);
             },
-            // https://html.spec.whatwg.org/multipage/#file-upload-state-(type=file):input-activation-behavior
-            InputType::File => {
-                self.select_files(None);
-            },
             // https://html.spec.whatwg.org/multipage/#color-state-(type=color):input-activation-behavior
-            InputType::Color => {
+            // https://html.spec.whatwg.org/multipage/#file-upload-state-(type=file):input-activation-behavior
+            InputType::Color | InputType::File => {
                 self.show_the_picker_if_applicable();
             },
             _ => (),
