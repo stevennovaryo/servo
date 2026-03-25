@@ -551,34 +551,6 @@ impl StackingContext {
 
     pub(crate) fn sort(&mut self) {
         self.contents.sort_by_key(|a| a.section());
-        self.real_stacking_contexts_and_positioned_stacking_containers
-            .sort_by_key(|a| a.z_index());
-
-        debug_assert!(
-            self.real_stacking_contexts_and_positioned_stacking_containers
-                .iter()
-                .all(|c| matches!(
-                    c.context_type,
-                    StackingContextType::RealStackingContext |
-                        StackingContextType::PositionedStackingContainer
-                ))
-        );
-        debug_assert!(
-            self.float_stacking_containers
-                .iter()
-                .all(
-                    |c| c.context_type == StackingContextType::FloatStackingContainer &&
-                        c.z_index() == 0
-                )
-        );
-        debug_assert!(
-            self.atomic_inline_stacking_containers
-                .iter()
-                .all(
-                    |c| c.context_type == StackingContextType::AtomicInlineStackingContainer &&
-                        c.z_index() == 0
-                )
-        );
     }
 
     fn push_webrender_stacking_context_if_necessary(
