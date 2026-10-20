@@ -2888,6 +2888,21 @@ impl TableSlotCell {
         // This must be scoped to this function because it conflicts with euclid's Zero.
         use style::Zero as StyleZero;
 
+        // Apply relative positioning insets to the cell's box, exactly like
+        // `RowFragmentLayout::finish` / `RowGroupFragmentLayout::finish` do for table tracks.
+        // Stock Servo does not support `position: relative` on table cells yet, so this new
+        // behavior is gated behind the experiment feature.
+        // <https://github.com/servo/servo/issues/41381>
+        #[cfg(feature = "ht_ai_gen")]
+        let cell_rect = {
+            let mut cell_rect = cell_rect;
+            if self.context.base.style.clone_position() == Position::Relative {
+                cell_rect.start_corner +=
+                    relative_adjustement(&self.context.base.style, containing_block);
+            }
+            cell_rect
+        };
+
         let cell_content_rect = cell_rect.deflate(&(layout.padding + layout.border));
         let content_block_size = layout.layout.content_block_size;
         let free_space = || Au::zero().max(cell_content_rect.size.block - content_block_size);

@@ -17,6 +17,10 @@ doctest = false
 
 [features]
 tracing = ["dep:tracing"]
+# Experiment-scoped umbrella feature. When enabled, agentic CSS-property work that is not yet
+# part of stock Servo behavior is activated. Off by default so an `--no-default-features`
+# build of this crate remains byte-identical to stock.
+ht_ai_gen = []
 
 [dependencies]
 accesskit = { workspace = true }
