@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>`left` used value on relative, absolute and table-cell boxes</title>
+    <link rel="match" href="left-used-value-ref.html">
+    <link rel="help" href="https://drafts.csswg.org/css-position-3/#propdef-left">
+    <meta name="assert" content="`left` offsets a relatively positioned box, resolves a percentage against the containing block for an absolutely positioned box, and applies to a relatively positioned table cell.">
+    <style>
+      html, body { margin: 0; padding: 0; }
+
+      .group { position: relative; width: 400px; height: 100px; }
+
+      .indicator {
+        position: absolute;
+        left: 100px;
+        top: 0;
+        width: 100px;
+        height: 100px;
+        background: red;
+      }
+
+      /* 1. `left` on a relatively positioned block shifts the box in visuals only. */
+      .shifted {
+        position: relative;
+        left: 100px;
+        width: 100px;
+        height: 100px;
+        background: green;
+      }
+
+      /* 2. `left` as a percentage of the containing block's width (25% of 400px). */
+      .percent {
+        position: absolute;
+        left: 25%;
+        top: 0;
+        width: 100px;
+        height: 100px;
+        background: green;
+      }
+
+      /* 3. `left` on a relatively positioned table cell. */
+      table { border-collapse: collapse; }
+      td { padding: 0; }
+      td.cell { position: relative; left: 100px; background: green; }
+      td.cell > div { width: 100px; height: 100px; }
+    </style>
+  </head>
+  <body>
+    <div class="group">
+      <div class="indicator"></div>
+      <div class="shifted"></div>
+    </div>
+    <div class="group">
+      <div class="indicator"></div>
+      <div class="percent"></div>
+    </div>
+    <div class="group">
+      <div class="indicator"></div>
+      <table>
+        <tbody>
+          <tr><td class="cell"><div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>

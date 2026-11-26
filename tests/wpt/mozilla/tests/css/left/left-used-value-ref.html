@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Reference: `left` used value</title>
+    <style>
+      html, body { margin: 0; padding: 0; }
+
+      .group { position: relative; width: 400px; height: 100px; }
+
+      /* Every case resolves to a green 100x100 box at 100px from the left edge. */
+      .green {
+        position: absolute;
+        left: 100px;
+        top: 0;
+        width: 100px;
+        height: 100px;
+        background: green;
+      }
+
+      table { border-collapse: collapse; margin-left: 100px; }
+      td { padding: 0; }
+      td.cell { background: green; }
+      td.cell > div { width: 100px; height: 100px; }
+    </style>
+  </head>
+  <body>
+    <div class="group"><div class="green"></div></div>
+    <div class="group"><div class="green"></div></div>
+    <div class="group">
+      <table>
+        <tbody>
+          <tr><td class="cell"><div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>

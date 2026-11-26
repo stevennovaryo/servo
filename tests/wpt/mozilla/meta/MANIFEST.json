@@ -4145,6 +4145,21 @@
       {}
      ]
     ],
+    "left": {
+     "left-used-value.html": [
+      "342bbabd81e892cf37ab05856cfac4a5a5740031",
+      [
+       "css/left/left-used-value.html",
+       [
+        [
+         "/_mozilla/css/left/left-used-value-ref.html",
+         "=="
+        ]
+       ],
+       {}
+      ]
+     ]
+    },
     "legacy-cellspacing-attribute.html": [
      "82a65aa9dff8ee0508aa67274ae8f779cf4459fb",
      [
@@ -9787,6 +9802,12 @@
      "3fedaf228d25d2cf8fe1b6db544a60eec65ad858",
      []
     ],
+    "left": {
+     "left-used-value-ref.html": [
+      "b1f729425e3a3c86ac04eade3df283aed0fcb2f7",
+      []
+     ]
+    },
     "legacy-input-size-attribute-override-ref.html": [
      "c13c9ec31647d7621ff8dcf8217fcaf51e6f2a34",
      []

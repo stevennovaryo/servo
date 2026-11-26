@@ -1823,6 +1823,7 @@ impl<'a> TableLayout<'a> {
                 row_index,
                 &table_and_track_dimensions,
                 &self.table.style,
+                containing_block_for_children.size.block,
             );
 
             let old_row_group_index = row_group_fragment_layout
@@ -2291,12 +2292,17 @@ impl<'a> RowFragmentLayout<'a> {
         index: usize,
         dimensions: &TableAndTrackDimensions,
         table_style: &'a ComputedValues,
+        block_size_constraint: SizeConstraint,
     ) -> Self {
         let rect = dimensions.get_row_rect(index);
+        // This containing block is only used when laying out the row's cells (writing mode
+        // conversion and `position: relative` offsets), so its block size must keep the table's
+        // own height constraint: a percentage inset on a table part does not resolve when the
+        // table height is automatic, because then the row height is not a valid basis.
         let containing_block = ContainingBlock {
             size: ContainingBlockSize {
                 inline: rect.size.inline,
-                block: SizeConstraint::Definite(rect.size.block),
+                block: block_size_constraint,
             },
             style: table_style,
         };
@@ -2887,6 +2893,21 @@ impl TableSlotCell {
     ) -> BoxFragment {
         // This must be scoped to this function because it conflicts with euclid's Zero.
         use style::Zero as StyleZero;
+
+        // Apply relative positioning insets to the cell's box, exactly like
+        // `RowFragmentLayout::finish` / `RowGroupFragmentLayout::finish` do for table tracks.
+        // Stock Servo does not support `position: relative` on table cells yet, so this new
+        // behavior is gated behind the experiment feature.
+        // <https://github.com/servo/servo/issues/41381>
+        #[cfg(feature = "ht_ai_gen")]
+        let cell_rect = {
+            let mut cell_rect = cell_rect;
+            if self.context.base.style.clone_position() == Position::Relative {
+                cell_rect.start_corner +=
+                    relative_adjustement(&self.context.base.style, containing_block);
+            }
+            cell_rect
+        };
 
         let cell_content_rect = cell_rect.deflate(&(layout.padding + layout.border));
         let content_block_size = layout.layout.content_block_size;
